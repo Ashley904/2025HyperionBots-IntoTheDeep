@@ -18,6 +18,7 @@ import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 
 import pedroPathing.constants.FConstants;
+import pedroPathing.constants.LConstants;
 
 @Autonomous(name = "5 Specimen Auton")
 public class Dougie5SpecAuton extends LinearOpMode {
