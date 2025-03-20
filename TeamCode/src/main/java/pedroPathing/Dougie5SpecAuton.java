@@ -241,7 +241,7 @@ public class Dougie5SpecAuton extends LinearOpMode {
                 new SequentialCommandGroup(
                         // Scoring 1st Specimen
                         new InstantCommand(() -> verticalArmSubSystem.PositionForSpecimenHanging()),
-                        new WaitCommand(1250),
+                        new WaitCommand(1000),
                         new ParallelCommandGroup(
                                 new FollowPath(follower, scorePreload1),
                                 new WaitCommand(900),
@@ -249,7 +249,9 @@ public class Dougie5SpecAuton extends LinearOpMode {
                                 new FollowPath(follower, scorePreload2)
                         ),
                         new WaitCommand(650),
-                        new InstantCommand(() -> verticalArmSubSystem.PositionForSpecimenCollection()),
+                        new InstantCommand(() -> verticalArmSubSystem.PositionForSpecimenCollection())
+
+                        /*
 
 
                         // Pushing 1st and 2nd sample
