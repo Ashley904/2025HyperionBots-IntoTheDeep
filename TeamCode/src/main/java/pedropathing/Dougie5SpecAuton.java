@@ -1,4 +1,4 @@
-package pedroPathing;
+package pedropathing;
 
 import com.arcrobotics.ftclib.command.CommandScheduler;
 import com.arcrobotics.ftclib.command.InstantCommand;
@@ -17,8 +17,8 @@ import com.pedropathing.util.Constants;
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 
-import pedroPathing.constants.FConstants;
-import pedroPathing.constants.LConstants;
+import pedropathing.constants.FConstants;
+import pedropathing.constants.LConstants;
 
 @Autonomous(name = "5 Specimen Auton")
 public class Dougie5SpecAuton extends LinearOpMode {
@@ -35,28 +35,28 @@ public class Dougie5SpecAuton extends LinearOpMode {
     /**
      * Scoring the 1st specimen onto the high bar
      */
-    private final Pose scoreSpecimenPreload1 = new Pose(41, 72.5, Math.toRadians(0));
-    private final Pose scoreSpecimenPreload2 = new Pose(41, 76);
+    private final Pose scoreSpecimenPreload1 = new Pose(39, 75, Math.toRadians(0));
 
     /**
      * Pushing the 1st sample into the observation zone
      */
-    private final Pose push1stSampleIntoObservationZone1 = new Pose(57, 35.5, Math.toRadians(0));
-    private final Pose push1stSampleIntoObservationZone2 = new Pose(22, 26, Math.toRadians(0));
+    private final Pose push1stSampleIntoObservationZone1 = new Pose(50, 35.5, Math.toRadians(0));
+    private final Pose push1stSampleIntoObservationZone2 = new Pose(57, 26.5, Math.toRadians(0));
+    private final Pose push1stSampleIntoObservationZone3 = new Pose(32.5, 26.5, Math.toRadians(0));
 
     /**
      * Pushing the 2nd sample into the observation zone
      */
     private final Pose push2ndSampleIntoObservationZone1 = new Pose(50, 26, Math.toRadians(0));
-    private final Pose push2ndSampleIntoObservationZone2 = new Pose(60, 15, Math.toRadians(0));
-    private final Pose push2ndSampleIntoObservationZone3 = new Pose(25.5, 15, Math.toRadians(0));
+    private final Pose push2ndSampleIntoObservationZone2 = new Pose(57, 17, Math.toRadians(0));
+    private final Pose push2ndSampleIntoObservationZone3 = new Pose(27.5, 18, Math.toRadians(0));
 
     /**
      * Pushing the 3rd sample into the observation zone
      */
-    private final Pose push3rdSampleIntoObservationZone1 = new Pose(50, 15, Math.toRadians(0));
-    private final Pose push3rdSampleIntoObservationZone2 = new Pose(60, 9, Math.toRadians(0));
-    private final Pose push3rdSampleIntoObservationZone3 = new Pose(14.2, 9, Math.toRadians(0));
+    private final Pose push3rdSampleIntoObservationZone1 = new Pose(50, 18, Math.toRadians(0));
+    private final Pose push3rdSampleIntoObservationZone2 = new Pose(58, 9.25, Math.toRadians(0));
+    private final Pose push3rdSampleIntoObservationZone3 = new Pose(14.2, 9.25, Math.toRadians(0));
 
     /**
      * Hanging the 2nd specimen onto the high bar
@@ -93,6 +93,8 @@ public class Dougie5SpecAuton extends LinearOpMode {
 
     private Path push1stSample1;
     private Path push1stSample2;
+    private Path push1stSample3;
+    private PathChain chained1stSamplePush;
 
     private Path push2ndSample1;
     private Path push2ndSample2;
@@ -126,32 +128,34 @@ public class Dougie5SpecAuton extends LinearOpMode {
         scorePreload1 = new Path(new BezierLine(new Point(startPose), new Point(scoreSpecimenPreload1)));
         scorePreload1.setConstantHeadingInterpolation(Math.toRadians(0));
 
-        scorePreload2 = new Path(new BezierLine(new Point(scoreSpecimenPreload1), new Point(scoreSpecimenPreload2)));
-        scorePreload2.setConstantHeadingInterpolation(Math.toRadians(0));
 
 
         /*** Pushing 1st Sample Into Observation Zone ***/
         Point controlPoint1 = new Point(15, 40);
-        push1stSample1 = new Path(new BezierCurve(new Point(scoreSpecimenPreload2), controlPoint1, new Point(push1stSampleIntoObservationZone1)));
+        push1stSample1 = new Path(new BezierCurve(new Point(scoreSpecimenPreload1), controlPoint1, new Point(push1stSampleIntoObservationZone1)));
         push1stSample1.setConstantHeadingInterpolation(Math.toRadians(0));
-        push1stSample1.setPathEndTimeoutConstraint(35);
-        push1stSample1.setZeroPowerAccelerationMultiplier(5);
 
-        Point controlPoint2 = new Point(80, 25);
+        Point controlPoint2 = new Point(56.5, 30);
         push1stSample2 = new Path(new BezierCurve(new Point(push1stSampleIntoObservationZone1), controlPoint2, new Point(push1stSampleIntoObservationZone2)));
         push1stSample2.setConstantHeadingInterpolation(Math.toRadians(0));
-        push1stSample2.setPathEndTimeoutConstraint(0);
-        push1stSample2.setZeroPowerAccelerationMultiplier(13.5);
+
+        push1stSample3 = new Path(new BezierCurve(new Point(push1stSampleIntoObservationZone2), new Point(push1stSampleIntoObservationZone3)));
+        push1stSample3.setConstantHeadingInterpolation(Math.toRadians(0));
+        push1stSample3.setPathEndTimeoutConstraint(0);
+        push1stSample3.setZeroPowerAccelerationMultiplier(10);
+
+        chained1stSamplePush = new PathChain(push1stSample1, push1stSample2, push1stSample3);
+
 
 
         /*** Pushing 2nd Sample Into Observation Zone ***/
-        push2ndSample1 = new Path(new BezierLine(new Point(push1stSampleIntoObservationZone2), new Point(push2ndSampleIntoObservationZone1)));
+        push2ndSample1 = new Path(new BezierLine(new Point(push1stSampleIntoObservationZone3), new Point(push2ndSampleIntoObservationZone1)));
         push2ndSample1.setConstantHeadingInterpolation(Math.toRadians(0));
-        push1stSample2.setPathEndTimeoutConstraint(50);
-        push1stSample2.setZeroPowerAccelerationMultiplier(6.5);
+        push2ndSample1.setPathEndTimeoutConstraint(0);
+        push2ndSample1.setZeroPowerAccelerationMultiplier(6.5);
 
-        Point controlPoint3 = new Point(65, 17.5);
-        push2ndSample2 = new Path(new BezierCurve(new Point(push2ndSampleIntoObservationZone1), controlPoint3, new Point(push2ndSampleIntoObservationZone2)));
+        Point controlPoint4 = new Point(56.5, 20);
+        push2ndSample2 = new Path(new BezierCurve(new Point(push2ndSampleIntoObservationZone1), controlPoint4, new Point(push2ndSampleIntoObservationZone2)));
         push2ndSample2.setConstantHeadingInterpolation(Math.toRadians(0));
 
         push2ndSample3 = new Path(new BezierLine(new Point(push2ndSampleIntoObservationZone2), new Point(push2ndSampleIntoObservationZone3)));
@@ -165,16 +169,16 @@ public class Dougie5SpecAuton extends LinearOpMode {
         push3rdSample1 = new Path(new BezierLine(new Point(push2ndSampleIntoObservationZone3), new Point(push3rdSampleIntoObservationZone1)));
         push3rdSample1.setConstantHeadingInterpolation(Math.toRadians(0));
 
-        Point controlPoint4 = new Point(60, 9);
-        push3rdSample2 = new Path(new BezierCurve(new Point(push3rdSampleIntoObservationZone1), controlPoint4, new Point(push3rdSampleIntoObservationZone2)));
+        Point controlPoint5 = new Point(60, 15);
+        push3rdSample2 = new Path(new BezierCurve(new Point(push3rdSampleIntoObservationZone1), controlPoint5, new Point(push3rdSampleIntoObservationZone2)));
         push3rdSample2.setConstantHeadingInterpolation(Math.toRadians(0));
 
         push3rdSample3 = new Path(new BezierLine(new Point(push3rdSampleIntoObservationZone2), new Point(push3rdSampleIntoObservationZone3)));
         push3rdSample3.setConstantHeadingInterpolation(Math.toRadians(0));
         push3rdSample3.setPathEndTimeoutConstraint(100);
-        push3rdSample3.setZeroPowerAccelerationMultiplier(5);
+        push3rdSample3.setZeroPowerAccelerationMultiplier(6);
 
-        chained3rdSamplePush = new PathChain(push3rdSample1, push3rdSample2);
+        chained3rdSamplePush = new PathChain(push3rdSample1, push3rdSample2, push3rdSample3);
 
         /*** Hanging 2nd Specimen Onto High Bar ***/
         Point hangControlPoint1 = new Point(12, 50);
@@ -239,91 +243,14 @@ public class Dougie5SpecAuton extends LinearOpMode {
         /** Building Autonomous Route **/
         CommandScheduler.getInstance().schedule(
                 new SequentialCommandGroup(
-                        // Scoring 1st Specimen
-                        new InstantCommand(() -> verticalArmSubSystem.PositionForSpecimenHanging()),
-                        new WaitCommand(1000),
-                        new ParallelCommandGroup(
-                                new FollowPath(follower, scorePreload1),
-                                new WaitCommand(900),
-                                new InstantCommand(() -> verticalArmSubSystem.ScoreSpecimenOntoHighBar()),
-                                new FollowPath(follower, scorePreload2)
-                        ),
-                        new WaitCommand(650),
-                        new InstantCommand(() -> verticalArmSubSystem.PositionForSpecimenCollection())
-
-                        /*
-
-
-                        // Pushing 1st and 2nd sample
-                        new FollowPath(follower, push1stSample1),
-                        new FollowPath(follower, push1stSample2),
+                        new FollowPath(follower, scorePreload1),
+                        new FollowPath(follower, chained1stSamplePush),
                         new FollowPath(follower, chained2ndSamplePush),
-
-
-                        // Pushing 3rd sample
-                        new FollowPath(follower, chained3rdSamplePush),
-                        new FollowPath(follower, push3rdSample3),
-                        new WaitCommand(50),
-                        new InstantCommand(() -> verticalArmSubSystem.PositionForSpecimenHanging()),
-                        new WaitCommand(450),
-
-                        // Scoring 2nd Specimen
-                        new FollowPath(follower, hang2ndSpecimen1),
-                        new InstantCommand(() -> verticalArmSubSystem. ScoreSpecimenOntoHighBar()),
-                        new WaitCommand(150),
-                        new FollowPath(follower, hang2ndSpecimen2)
-
-                        /*
-
-
-                        // Scoring 3rd Specimen
-                        new ParallelCommandGroup(
-                                new FollowPath(follower, hang3rdSpecimen1),
-                                new InstantCommand(() -> verticalArmSubSystem.PositionForSpecimenCollection())
-                        ),
-                        new WaitCommand(150),
-                        new FollowPath(follower, hang3rdSpecimen2),
-                        new InstantCommand(() -> verticalArmSubSystem.PositionForSpecimenHanging()),
-                        new WaitCommand(450),
-                        new FollowPath(follower, hang3rdSpecimen3),
-                        new InstantCommand(() -> verticalArmSubSystem. ScoreSpecimenOntoHighBar()),
-                        new WaitCommand(50),
-                        new FollowPath(follower, hang3rdSpecimen4),
-
-                        // Scoring 4th Specimen
-                        new ParallelCommandGroup(
-                                new FollowPath(follower, hang4thSpecimen1),
-                                new InstantCommand(() -> verticalArmSubSystem.PositionForSpecimenCollection())
-                        ),
-                        new WaitCommand(150),
-                        new FollowPath(follower, hang4thSpecimen2),
-                        new InstantCommand(() -> verticalArmSubSystem.PositionForSpecimenHanging()),
-                        new WaitCommand(450),
-                        new FollowPath(follower, hang4thSpecimen3),
-                        new InstantCommand(() -> verticalArmSubSystem. ScoreSpecimenOntoHighBar()),
-                        new WaitCommand(50),
-                        new FollowPath(follower, hang4thSpecimen4),
-
-                        // Scoring 5th Specimen
-                        new FollowPath(follower, hang5thSpecimen1),
-                        new FollowPath(follower, hang5thSpecimen2),
-                        new InstantCommand(() -> verticalArmSubSystem.PositionForSpecimenHanging()),
-                        new WaitCommand(650),
-                        new FollowPath(follower, hang5thSpecimen3),
-                        new InstantCommand(() -> verticalArmSubSystem.ScoreSpecimenOntoHighBar()),
-
-                        new WaitCommand(500),
-                        new InstantCommand(() -> verticalArmSubSystem.PositionForSpecimenCollection()),
-                        new WaitCommand(500)
-
-                         */
-
-
-
+                        new FollowPath(follower, chained3rdSamplePush)
                 )
         );
 
-        telemetry.addData("Status: ", "Ready to start!");
+        telemetry.addData("Status: ", "Ready to start!HJGHJVH");
         telemetry.update();
 
         waitForStart();
