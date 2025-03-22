@@ -1,4 +1,4 @@
-package pedroPathing;
+package pedropathing;
 
 import com.arcrobotics.ftclib.command.CommandScheduler;
 import com.arcrobotics.ftclib.command.InstantCommand;
@@ -40,15 +40,9 @@ public class DougieArmSubSystem extends SubsystemBase {
     PIDController pidController;
     PIDController horizontalPidController;
 
-    private boolean horizontalSlideReachedPosition = false;
 
-    // Flag to indicate manual override is active
     public boolean isManualOverrideEnabled = false;
-
-    // Variable to store the current rotation servo position
-    private double currentRotationServoPosition = 0.165; // Default position
-
-    // Flag to track if the arm is in PositionForSampleCollection mode
+    private double rotationServoDefaultPosition = 0.165;
     public boolean isInSampleCollectionMode = false;
 
     public DougieArmSubSystem(HardwareMap hardwareMap) {
@@ -85,9 +79,6 @@ public class DougieArmSubSystem extends SubsystemBase {
 
         rotationServo = hardwareMap.get(Servo.class, "gripperRotation");
         rotationServo.setDirection(Servo.Direction.FORWARD);
-
-        // Initialize the rotation servo to its default position
-        rotationServo.setPosition(currentRotationServoPosition);
     }
 
     void PositionForSpecimenCollection() {
@@ -97,8 +88,8 @@ public class DougieArmSubSystem extends SubsystemBase {
                         new WaitCommand(150),
                         new InstantCommand(() -> controlServo.setPosition(0.2)),
                         new ParallelCommandGroup(
-                                new InstantCommand(() -> horizontalLeftServo.setPosition(0.15)),
-                                new InstantCommand(() -> horizontalRightServo.setPosition(0.15)),
+                                new InstantCommand(() -> horizontalLeftServo.setPosition(0.135)),
+                                new InstantCommand(() -> horizontalRightServo.setPosition(0.135)),
                                 new InstantCommand(() -> rotationServo.setPosition(0.115)),
                                 new InstantCommand(() -> gripperServo.setPosition(0.225))
                         )
@@ -162,10 +153,10 @@ public class DougieArmSubSystem extends SubsystemBase {
     void PositionForSampleCollection(double rotationServoInput) {
         isInSampleCollectionMode = true;
 
-        currentRotationServoPosition += rotationServoInput * 0.024;
-        currentRotationServoPosition = Math.max(0.0, Math.min(1.0, currentRotationServoPosition));
+        rotationServoDefaultPosition += rotationServoInput * 0.024;
+        rotationServoDefaultPosition = Math.max(0.0, Math.min(1.0, rotationServoDefaultPosition));
 
-        rotationServo.setPosition(currentRotationServoPosition);
+        rotationServo.setPosition(rotationServoDefaultPosition);
 
         CommandScheduler.getInstance().schedule(
                 new SequentialCommandGroup(

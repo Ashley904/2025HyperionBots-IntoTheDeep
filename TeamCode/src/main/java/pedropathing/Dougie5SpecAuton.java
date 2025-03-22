@@ -35,28 +35,28 @@ public class Dougie5SpecAuton extends LinearOpMode {
     /**
      * Scoring the 1st specimen onto the high bar
      */
-    private final Pose scoreSpecimenPreload1 = new Pose(39, 75, Math.toRadians(0));
+    private final Pose scoreSpecimenPreload1 = new Pose(37.5, 76, Math.toRadians(0));
 
     /**
      * Pushing the 1st sample into the observation zone
      */
-    private final Pose push1stSampleIntoObservationZone1 = new Pose(50, 35.5, Math.toRadians(0));
+    private final Pose push1stSampleIntoObservationZone1 = new Pose(46, 36.5, Math.toRadians(0));
     private final Pose push1stSampleIntoObservationZone2 = new Pose(57, 26.5, Math.toRadians(0));
     private final Pose push1stSampleIntoObservationZone3 = new Pose(32.5, 26.5, Math.toRadians(0));
 
     /**
      * Pushing the 2nd sample into the observation zone
      */
-    private final Pose push2ndSampleIntoObservationZone1 = new Pose(50, 26, Math.toRadians(0));
-    private final Pose push2ndSampleIntoObservationZone2 = new Pose(57, 17, Math.toRadians(0));
-    private final Pose push2ndSampleIntoObservationZone3 = new Pose(27.5, 18, Math.toRadians(0));
+    private final Pose push2ndSampleIntoObservationZone1 = new Pose(46.5, 26.5, Math.toRadians(0));
+    private final Pose push2ndSampleIntoObservationZone2 = new Pose(60, 17.5, Math.toRadians(0));
+    private final Pose push2ndSampleIntoObservationZone3 = new Pose(27, 17.5, Math.toRadians(0));
 
     /**
      * Pushing the 3rd sample into the observation zone
      */
-    private final Pose push3rdSampleIntoObservationZone1 = new Pose(50, 18, Math.toRadians(0));
-    private final Pose push3rdSampleIntoObservationZone2 = new Pose(58, 9.25, Math.toRadians(0));
-    private final Pose push3rdSampleIntoObservationZone3 = new Pose(14.2, 9.25, Math.toRadians(0));
+    private final Pose push3rdSampleIntoObservationZone1 = new Pose(50, 17.5, Math.toRadians(0));
+    private final Pose push3rdSampleIntoObservationZone2 = new Pose(60, 9.5, Math.toRadians(0));
+    private final Pose push3rdSampleIntoObservationZone3 = new Pose(14.2, 9.5, Math.toRadians(0));
 
     /**
      * Hanging the 2nd specimen onto the high bar
@@ -154,7 +154,7 @@ public class Dougie5SpecAuton extends LinearOpMode {
         push2ndSample1.setPathEndTimeoutConstraint(0);
         push2ndSample1.setZeroPowerAccelerationMultiplier(6.5);
 
-        Point controlPoint4 = new Point(56.5, 20);
+        Point controlPoint4 = new Point(56.5, 24);
         push2ndSample2 = new Path(new BezierCurve(new Point(push2ndSampleIntoObservationZone1), controlPoint4, new Point(push2ndSampleIntoObservationZone2)));
         push2ndSample2.setConstantHeadingInterpolation(Math.toRadians(0));
 
@@ -165,11 +165,13 @@ public class Dougie5SpecAuton extends LinearOpMode {
 
         chained2ndSamplePush = new PathChain(push2ndSample1, push2ndSample2, push2ndSample3);
 
+
+
         /*** Pushing 3rd Sample Into Observation Zone ***/
         push3rdSample1 = new Path(new BezierLine(new Point(push2ndSampleIntoObservationZone3), new Point(push3rdSampleIntoObservationZone1)));
         push3rdSample1.setConstantHeadingInterpolation(Math.toRadians(0));
 
-        Point controlPoint5 = new Point(60, 15);
+        Point controlPoint5 = new Point(57, 16.5);
         push3rdSample2 = new Path(new BezierCurve(new Point(push3rdSampleIntoObservationZone1), controlPoint5, new Point(push3rdSampleIntoObservationZone2)));
         push3rdSample2.setConstantHeadingInterpolation(Math.toRadians(0));
 

@@ -20,9 +20,8 @@
  *   SOFTWARE.
  */
 
-package pedroPathing.tuners_tests.localization;
+package pedropathing.tuners_tests.localization;
 
-import com.qualcomm.robotcore.eventloop.opmode.Disabled;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 

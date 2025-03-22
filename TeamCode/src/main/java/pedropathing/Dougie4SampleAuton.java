@@ -1,4 +1,4 @@
-package pedroPathing;
+package pedropathing;
 
 import com.arcrobotics.ftclib.command.CommandScheduler;
 import com.pedropathing.follower.Follower;
@@ -12,8 +12,8 @@ import com.pedropathing.util.Timer;
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
 import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 
-import pedroPathing.constants.FConstants;
-import pedroPathing.constants.LConstants;
+import pedropathing.constants.FConstants;
+import pedropathing.constants.LConstants;
 
 @Autonomous(name = "4 Sample Auton")
 public class Dougie4SampleAuton extends OpMode {

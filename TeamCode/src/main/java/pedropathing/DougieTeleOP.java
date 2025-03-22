@@ -1,4 +1,4 @@
-package pedroPathing;
+package pedropathing;
 
 import com.acmerobotics.dashboard.config.Config;
 import com.arcrobotics.ftclib.command.CommandScheduler;
