@@ -23,7 +23,7 @@ import pedropathing.constants.LConstants;
 @Autonomous(name = "5 Specimen Auton")
 public class Dougie5SpecAuton extends LinearOpMode {
 
-    DougieArmSubSystem verticalArmSubSystem;
+    //DougieArmSubSystem verticalArmSubSystem;
 
     private Follower follower;
 
@@ -35,7 +35,7 @@ public class Dougie5SpecAuton extends LinearOpMode {
     /**
      * Scoring the 1st specimen onto the high bar
      */
-    private final Pose scoreSpecimenPreload1 = new Pose(37.5, 76, Math.toRadians(0));
+    private final Pose scoreSpecimenPreload1 = new Pose(39, 76, Math.toRadians(0));
 
     /**
      * Pushing the 1st sample into the observation zone
@@ -234,6 +234,8 @@ public class Dougie5SpecAuton extends LinearOpMode {
     }
 
     public void runOpMode(){
+
+        /*
         buildPaths();
         verticalArmSubSystem = new DougieArmSubSystem(hardwareMap);
 
@@ -242,17 +244,26 @@ public class Dougie5SpecAuton extends LinearOpMode {
         follower.setStartingPose(startPose);
         buildPaths();
 
-        /** Building Autonomous Route **/
+        Building Autonomous Route
         CommandScheduler.getInstance().schedule(
                 new SequentialCommandGroup(
-                        new FollowPath(follower, scorePreload1),
+
+
+                        // Scoring preload specimen
+                        new ParallelCommandGroup( new InstantCommand(() -> verticalArmSubSystem.PositionForSpecimenHanging())
+                                .andThen(new WaitCommand(1000))
+                                .andThen(new FollowPath(follower, scorePreload1))
+                        ),
+                        new InstantCommand(() -> verticalArmSubSystem.ScoreSpecimenOntoHighBar()),
+                        new WaitCommand(650),
+
                         new FollowPath(follower, chained1stSamplePush),
                         new FollowPath(follower, chained2ndSamplePush),
                         new FollowPath(follower, chained3rdSamplePush)
                 )
         );
 
-        telemetry.addData("Status: ", "Ready to start!HJGHJVH");
+        telemetry.addData("Status: ", "Ready to start!");
         telemetry.update();
 
         waitForStart();
@@ -264,5 +275,6 @@ public class Dougie5SpecAuton extends LinearOpMode {
             verticalArmSubSystem.UpdateVerticalSlidePIDFControl();
             verticalArmSubSystem.UpdateHorizontalSlidePIDFControl();
         }
+        */
     }
 }

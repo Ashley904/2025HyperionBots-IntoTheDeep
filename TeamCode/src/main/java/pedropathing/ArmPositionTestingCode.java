@@ -60,10 +60,10 @@ public class ArmPositionTestingCode extends LinearOpMode {
         horizontalSlide.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
 
         horizontalLeftServo = hardwareMap.get(Servo.class, "horizontalLeftServo");
-        horizontalLeftServo.setDirection(Servo.Direction.FORWARD);
+        horizontalLeftServo.setDirection(Servo.Direction.REVERSE);
 
         horizontalRightServo = hardwareMap.get(Servo.class, "horizontalRightServo");
-        horizontalRightServo.setDirection(Servo.Direction.REVERSE);
+        horizontalRightServo.setDirection(Servo.Direction.FORWARD);
 
         controlServo = hardwareMap.get(Servo.class, "controlServo");
         controlServo.setDirection(Servo.Direction.FORWARD);
@@ -78,13 +78,9 @@ public class ArmPositionTestingCode extends LinearOpMode {
         telemetry.addData("Status: ", "Ready to start...");
         telemetry.update();
 
-        verticalSlideLeft.setPower(0.5);
-        verticalSlideRight.setPower(0.5);
 
-        sleep(1500);
+        horizontalRightServo.setPosition(1);
 
-        verticalSlideLeft.setPower(0);
-        verticalSlideRight.setPower(0);
 
 
         waitForStart();
@@ -98,10 +94,6 @@ public class ArmPositionTestingCode extends LinearOpMode {
 
             HorizontalPIDFControl();
             VerticalPIDFSlideControl();
-
-            telemetry.addData("l", verticalSlideLeft.getCurrentPosition());
-            telemetry.addData("r", verticalSlideRight.getCurrentPosition());
-            telemetry.update();
         }
 
     }
@@ -109,7 +101,7 @@ public class ArmPositionTestingCode extends LinearOpMode {
     void VerticalPIDFSlideControl() {
         pidController.setPID(kP, kI, kD);
 
-        currentSlidePosition = (verticalSlideLeft.getCurrentPosition() + -verticalSlideRight.getCurrentPosition()) / 2;
+        currentSlidePosition = -verticalSlideLeft.getCurrentPosition();
 
         // Calculate PID and feedforward
         double pid = pidController.calculate(currentSlidePosition, verticalSlideTargetPosition);
