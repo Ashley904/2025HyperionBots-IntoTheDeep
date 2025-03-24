@@ -35,7 +35,7 @@ public class Dougie5SpecAuton extends LinearOpMode {
     /**
      * Scoring the 1st specimen onto the high bar
      */
-    private final Pose scoreSpecimenPreload1 = new Pose(39, 76, Math.toRadians(0));
+    private final Pose scoreSpecimenPreload1 = new Pose(40, 76, Math.toRadians(0));
 
     /**
      * Pushing the 1st sample into the observation zone
@@ -55,30 +55,28 @@ public class Dougie5SpecAuton extends LinearOpMode {
      * Pushing the 3rd sample into the observation zone
      */
     private final Pose push3rdSampleIntoObservationZone1 = new Pose(50, 17.5, Math.toRadians(0));
-    private final Pose push3rdSampleIntoObservationZone2 = new Pose(60, 9.5, Math.toRadians(0));
-    private final Pose push3rdSampleIntoObservationZone3 = new Pose(14.2, 9.5, Math.toRadians(0));
+    private final Pose push3rdSampleIntoObservationZone2 = new Pose(60, 10, Math.toRadians(0));
+    private final Pose push3rdSampleIntoObservationZone3 = new Pose(15, 10, Math.toRadians(0));
 
     /**
      * Hanging the 2nd specimen onto the high bar
      */
-    private final Pose hang2ndSpecimenOntoHighBar1 = new Pose(42.5, 70, Math.toRadians(0));
-    private final Pose hang2ndSpecimenOntoHighBar2 = new Pose(43.15, 74, Math.toRadians(0));
+    private final Pose hang2ndSpecimenOntoHighBar1 = new Pose(42.5, 71, Math.toRadians(0));
+    private final Pose hang2ndSpecimenOntoHighBar2 = new Pose(42.5, 73.5, Math.toRadians(0));
 
     /**
      * Hanging the 3rd specimen onto the high bar
      */
-    private final Pose hang3rdSpecimenOntoHighBar1 = new Pose(20, 35, Math.toRadians(0));
-    private final Pose hang3rdSpecimenOntoHighBar2 = new Pose(15.15, 35, Math.toRadians(0));
-    private final Pose hang3rdSpecimenOntoHighBar3 = new Pose(41.5, 70, Math.toRadians(0));
-    private final Pose hang3rdSpecimenOntoHighBar4 = new Pose(42.5, 74, Math.toRadians(0));
+    private final Pose collect3rdSpecimenFromWall = new Pose(13, 34, Math.toRadians(0));
+    private final Pose hang3rdSpecimenOntoHighBar1 = new Pose(42.5, 71, Math.toRadians(0));
+    private final Pose hang3rdSpecimenOntoHighBar2 = new Pose(42.5, 73.5, Math.toRadians(0));
 
     /**
      * Hanging the 4th specimen onto the high bar
      */
-    private final Pose hang4thSpecimenOntoHighBar1 = new Pose(20, 35, Math.toRadians(0));
-    private final Pose hang4thSpecimenOntoHighBar2 = new Pose(15.15, 35, Math.toRadians(0));
-    private final Pose hang4thSpecimenOntoHighBar3 = new Pose(41.5, 70, Math.toRadians(0));
-    private final Pose hang4thSpecimenOntoHighBar4 = new Pose(42.5, 74, Math.toRadians(0));
+    private final Pose collect4thSpecimenFromWall = new Pose(13, 34, Math.toRadians(0));
+    private final Pose hang4thSpecimenOntoHighBar1 = new Pose(42.5, 71, Math.toRadians(0));
+    private final Pose hang4thSpecimenOntoHighBar2 = new Pose(42.5, 73.5, Math.toRadians(0));
 
     /**
      * Hanging the 5th specimen onto the high bar
@@ -108,16 +106,17 @@ public class Dougie5SpecAuton extends LinearOpMode {
 
     private Path hang2ndSpecimen1;
     private Path hang2ndSpecimen2;
+    private PathChain chainedHang2ndSpecimen;
 
+    private Path collect3rdSpecimen;
     private Path hang3rdSpecimen1;
     private Path hang3rdSpecimen2;
-    private Path hang3rdSpecimen3;
-    private Path hang3rdSpecimen4;
+    private PathChain chainedHang3rdSpecimen;
 
+    private Path collect4thSpecimen;
     private Path hang4thSpecimen1;
     private Path hang4thSpecimen2;
-    private Path hang4thSpecimen3;
-    private Path hang4thSpecimen4;
+    private PathChain chainedHang4thSpecimen;
 
     private Path hang5thSpecimen1;
     private Path hang5thSpecimen2;
@@ -182,6 +181,8 @@ public class Dougie5SpecAuton extends LinearOpMode {
 
         chained3rdSamplePush = new PathChain(push3rdSample1, push3rdSample2, push3rdSample3);
 
+
+
         /*** Hanging 2nd Specimen Onto High Bar ***/
         Point hangControlPoint1 = new Point(12, 50);
         hang2ndSpecimen1 = new Path(new BezierCurve(new Point(push3rdSampleIntoObservationZone3), hangControlPoint1, new Point(hang2ndSpecimenOntoHighBar1)));
@@ -191,37 +192,47 @@ public class Dougie5SpecAuton extends LinearOpMode {
         hang2ndSpecimen2 = new Path(new BezierLine(new Point(hang2ndSpecimenOntoHighBar1), new Point(hang2ndSpecimenOntoHighBar2)));
         hang2ndSpecimen2.setConstantHeadingInterpolation(Math.toRadians(0));
 
-        /*** Hanging 3rd Specimen Onto High Bar ***/
+        chainedHang2ndSpecimen = new PathChain(hang2ndSpecimen1, hang2ndSpecimen2);
 
-        Point hangingSpecimenControlPoint1 = new Point(22, 75);
-        hang3rdSpecimen1 = new Path(new BezierCurve(new Point(hang2ndSpecimenOntoHighBar2), hangingSpecimenControlPoint1, new Point(hang3rdSpecimenOntoHighBar1)));
+
+
+        /*** Hanging 3rd Specimen Onto High Bar ***/
+        Point collectSpecimenControlPoint1 = new Point(20, 70);
+        Point collectSpecimenControlPoint2 = new Point(45, 30);
+        collect3rdSpecimen = new Path(new BezierCurve(new Point(hang2ndSpecimenOntoHighBar2), collectSpecimenControlPoint1, collectSpecimenControlPoint2, new Point(collect3rdSpecimenFromWall)));
+        collect3rdSpecimen.setConstantHeadingInterpolation(Math.toRadians(0));
+
+
+        Point hangingSpecimenControlPoint2 = new Point(12, 50);
+        hang3rdSpecimen1 = new Path(new BezierCurve(new Point(collect3rdSpecimenFromWall), hangingSpecimenControlPoint2, new Point(hang3rdSpecimenOntoHighBar1)));
         hang3rdSpecimen1.setConstantHeadingInterpolation(Math.toRadians(0));
 
         hang3rdSpecimen2 = new Path(new BezierLine(new Point(hang3rdSpecimenOntoHighBar1), new Point(hang3rdSpecimenOntoHighBar2)));
         hang3rdSpecimen2.setConstantHeadingInterpolation(Math.toRadians(0));
 
-        Point hangingSpecimenControlPoint2 = new Point(25, 65);
-        hang3rdSpecimen3 = new Path(new BezierCurve(new Point(hang3rdSpecimenOntoHighBar2), hangingSpecimenControlPoint2, new Point(hang3rdSpecimenOntoHighBar3)));
-        hang3rdSpecimen3.setConstantHeadingInterpolation(Math.toRadians(0));
+        chainedHang3rdSpecimen = new PathChain(hang3rdSpecimen1, hang3rdSpecimen2);
 
-        hang3rdSpecimen4 = new Path(new BezierLine(new Point(hang3rdSpecimenOntoHighBar3), new Point(hang3rdSpecimenOntoHighBar4)));
-        hang3rdSpecimen4.setConstantHeadingInterpolation(Math.toRadians(0));
 
-        /*** Hanging 4th Specimen Onto High Bar ***/
-        hang4thSpecimen1 = new Path(new BezierCurve(new Point(hang3rdSpecimenOntoHighBar4), hangingSpecimenControlPoint1, new Point(hang4thSpecimenOntoHighBar1)));
+
+        /*** Hanging 4th Specimen Onto High Bar **/
+        Point collectSpecimenControlPoint3 = new Point(20, 70);
+        Point collectSpecimenControlPoint4 = new Point(45, 30);
+        collect4thSpecimen = new Path(new BezierCurve(new Point(hang3rdSpecimenOntoHighBar2), collectSpecimenControlPoint3, collectSpecimenControlPoint4, new Point(collect4thSpecimenFromWall)));
+        collect4thSpecimen.setConstantHeadingInterpolation(Math.toRadians(0));
+
+
+        Point hangingSpecimenControlPoint5 = new Point(12, 50);
+        hang4thSpecimen1 = new Path(new BezierCurve(new Point(collect4thSpecimenFromWall), hangingSpecimenControlPoint5, new Point(hang4thSpecimenOntoHighBar1)));
         hang4thSpecimen1.setConstantHeadingInterpolation(Math.toRadians(0));
 
-        hang4thSpecimen2 = new Path(new BezierLine(new Point(hang3rdSpecimenOntoHighBar1), new Point(hang4thSpecimenOntoHighBar2)));
+        hang4thSpecimen2 = new Path(new BezierLine(new Point(hang4thSpecimenOntoHighBar1), new Point(hang4thSpecimenOntoHighBar2)));
         hang4thSpecimen2.setConstantHeadingInterpolation(Math.toRadians(0));
 
-        hang4thSpecimen3 = new Path(new BezierCurve(new Point(hang4thSpecimenOntoHighBar2), hangingSpecimenControlPoint2, new Point(hang4thSpecimenOntoHighBar3)));
-        hang4thSpecimen3.setConstantHeadingInterpolation(Math.toRadians(0));
-
-        hang4thSpecimen4 = new Path(new BezierLine(new Point(hang4thSpecimenOntoHighBar3), new Point(hang4thSpecimenOntoHighBar4)));
-        hang4thSpecimen4.setConstantHeadingInterpolation(Math.toRadians(0));
+        chainedHang4thSpecimen = new PathChain(hang4thSpecimen1, hang4thSpecimen2);
 
 
-        /*** Hanging 5th Specimen Onto High Bar ***/
+         /*
+        /*** Hanging 5th Specimen Onto High Bar
         hang5thSpecimen1 = new Path(new BezierCurve(new Point(hang4thSpecimenOntoHighBar3), hangingSpecimenControlPoint1, new Point(hang5thSpecimenOntoHighBar1)));
         hang5thSpecimen1.setConstantHeadingInterpolation(Math.toRadians(0));
 
@@ -231,39 +242,40 @@ public class Dougie5SpecAuton extends LinearOpMode {
         hang5thSpecimen3 = new Path(new BezierLine(new Point(hang5thSpecimenOntoHighBar2), new Point(hang5thSpecimenOntoHighBar3)));
         hang5thSpecimen3.setConstantHeadingInterpolation(Math.toRadians(0));
 
+        */
+
     }
 
     public void runOpMode(){
 
-        /*
         buildPaths();
-        verticalArmSubSystem = new DougieArmSubSystem(hardwareMap);
 
         Constants.setConstants(FConstants.class, LConstants.class);
         follower = new Follower(hardwareMap);
         follower.setStartingPose(startPose);
         buildPaths();
 
-        Building Autonomous Route
+        // Building Autonomous Route
         CommandScheduler.getInstance().schedule(
                 new SequentialCommandGroup(
-
-
-                        // Scoring preload specimen
-                        new ParallelCommandGroup( new InstantCommand(() -> verticalArmSubSystem.PositionForSpecimenHanging())
-                                .andThen(new WaitCommand(1000))
-                                .andThen(new FollowPath(follower, scorePreload1))
-                        ),
-                        new InstantCommand(() -> verticalArmSubSystem.ScoreSpecimenOntoHighBar()),
-                        new WaitCommand(650),
+                        new FollowPath(follower, scorePreload1),
 
                         new FollowPath(follower, chained1stSamplePush),
+
                         new FollowPath(follower, chained2ndSamplePush),
-                        new FollowPath(follower, chained3rdSamplePush)
+                        new FollowPath(follower, chained3rdSamplePush),
+
+                        new FollowPath(follower, chainedHang2ndSpecimen),
+
+                        new FollowPath(follower, collect3rdSpecimen),
+                        new FollowPath(follower, chainedHang3rdSpecimen),
+
+                        new FollowPath(follower, collect4thSpecimen),
+                        new FollowPath(follower, chainedHang4thSpecimen)
                 )
         );
 
-        telemetry.addData("Status: ", "Ready to start!");
+        telemetry.addData("Status: ", "Ready to start...");
         telemetry.update();
 
         waitForStart();
@@ -272,9 +284,7 @@ public class Dougie5SpecAuton extends LinearOpMode {
             CommandScheduler.getInstance().run();
             follower.update();
 
-            verticalArmSubSystem.UpdateVerticalSlidePIDFControl();
-            verticalArmSubSystem.UpdateHorizontalSlidePIDFControl();
         }
-        */
+
     }
 }
