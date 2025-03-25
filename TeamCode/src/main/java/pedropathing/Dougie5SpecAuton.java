@@ -341,7 +341,10 @@ public class Dougie5SpecAuton extends LinearOpMode {
 
                         new FollowPath(follower, chainedHang5thSpecimen),
                         new InstantCommand(() -> armSubSystem.ScoreSpecimen()),
-                        new WaitCommand(450)
+                        new WaitCommand(450),
+
+                        /** Park In Obsevation Zone **/
+                        new FollowPath(follower, park)
 
                 )
         );
