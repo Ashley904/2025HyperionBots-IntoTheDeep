@@ -8,6 +8,7 @@ import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.Gamepad;
 import com.qualcomm.robotcore.hardware.IMU;
+import com.qualcomm.robotcore.util.ElapsedTime;
 
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
 
@@ -48,6 +49,9 @@ public class DougieTeleOp extends LinearOpMode {
     private boolean lastDpadUpState;
     private boolean lastDpadDownState;
     private boolean lockHeading = true;
+    private boolean lastLeftBumperState = false;
+
+    ElapsedTime releaseTimer;
 
 
     /** Drive Mode Toggling **/
@@ -77,10 +81,15 @@ public class DougieTeleOp extends LinearOpMode {
         armSubSystem.VerticalArmIdlePosition();
         CommandScheduler.getInstance().run();
 
+        releaseTimer = new ElapsedTime();
+
         telemetry.addData("Status: ", "Ready to start");
         telemetry.update();
 
         waitForStart();
+
+        releaseTimer.reset();
+        releaseTimer.startTime();
 
         while(opModeIsActive()){
             DriveModeToggling();
@@ -219,11 +228,25 @@ public class DougieTeleOp extends LinearOpMode {
 
 
     private void ArmPositionToggling(){
-        if(gamepad1.a) armSubSystem.PositionForSpecimenCollection();
+        // Position for specimen collection
+        if (gamepad1.left_bumper) {
+            armSubSystem.PositionForSpecimenCollection();
+            lastLeftBumperState = true;
+            releaseTimer.reset();
+        }
+        // Position for specimen hanging
+        else if (lastLeftBumperState) {
+            if (releaseTimer.milliseconds() >= 200) {
+                armSubSystem.PositionForSpecimenScoring();
+                lastLeftBumperState = false;
+            }
+        }
 
-        if(gamepad1.b) armSubSystem.PositionForSpecimenScoring();
 
-        if(gamepad1.y) armSubSystem.ScoreSpecimen();
+        // Hang specimen
+        if (gamepad1.a) {
+            armSubSystem.ScoreSpecimen();
+        }
     }
 
 

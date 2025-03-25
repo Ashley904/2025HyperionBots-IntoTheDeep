@@ -23,7 +23,7 @@ import pedropathing.constants.LConstants;
 @Autonomous(name = "5 Specimen Auton")
 public class Dougie5SpecAuton extends LinearOpMode {
 
-    //DougieArmSubSystem verticalArmSubSystem;
+    DougieArmSubSystem armSubSystem;
 
     private Follower follower;
 
@@ -35,7 +35,7 @@ public class Dougie5SpecAuton extends LinearOpMode {
     /**
      * Scoring the 1st specimen onto the high bar
      */
-    private final Pose scoreSpecimenPreload1 = new Pose(40, 76, Math.toRadians(0));
+    private final Pose scoreSpecimenPreload = new Pose(40, 77.5, Math.toRadians(0));
 
     /**
      * Pushing the 1st sample into the observation zone
@@ -61,7 +61,7 @@ public class Dougie5SpecAuton extends LinearOpMode {
     /**
      * Hanging the 2nd specimen onto the high bar
      */
-    private final Pose hang2ndSpecimenOntoHighBar1 = new Pose(42.5, 71, Math.toRadians(0));
+    private final Pose hang2ndSpecimenOntoHighBar1 = new Pose(42.5, 70.5, Math.toRadians(0));
     private final Pose hang2ndSpecimenOntoHighBar2 = new Pose(42.5, 73.5, Math.toRadians(0));
 
     /**
@@ -81,13 +81,17 @@ public class Dougie5SpecAuton extends LinearOpMode {
     /**
      * Hanging the 5th specimen onto the high bar
      */
-    private final Pose hang5thSpecimenOntoHighBar1 = new Pose(20, 35, Math.toRadians(0));
-    private final Pose hang5thSpecimenOntoHighBar2 = new Pose(15.15, 35, Math.toRadians(0));
-    private final Pose hang5thSpecimenOntoHighBar3 = new Pose(42.5, 70, Math.toRadians(0));
+    private final Pose collect5thSpecimenFromWall = new Pose(13, 34, Math.toRadians(0));
+    private final Pose hang5thSpecimenOntoHighBar1 = new Pose(42.5, 71, Math.toRadians(0));
+    private final Pose hang5thSpecimenOntoHighBar2 = new Pose(42.5, 73.5, Math.toRadians(0));
+
+    /**
+     * Parking inside of the observation zone
+     */
+    private final Pose parkInObservationZone = new Pose(13, 30, Math.toRadians(0));
 
 
-    private Path scorePreload1;
-    private Path scorePreload2;
+    private Path scorePreload;
 
     private Path push1stSample1;
     private Path push1stSample2;
@@ -118,20 +122,24 @@ public class Dougie5SpecAuton extends LinearOpMode {
     private Path hang4thSpecimen2;
     private PathChain chainedHang4thSpecimen;
 
+    private Path collect5thSpecimen;
     private Path hang5thSpecimen1;
     private Path hang5thSpecimen2;
-    private Path hang5thSpecimen3;
+    private PathChain chainedHang5thSpecimen;
+
+    private Path park;
+
 
     public void buildPaths() {
         /*** Scoring 1st Specimen ***/
-        scorePreload1 = new Path(new BezierLine(new Point(startPose), new Point(scoreSpecimenPreload1)));
-        scorePreload1.setConstantHeadingInterpolation(Math.toRadians(0));
+        scorePreload = new Path(new BezierLine(new Point(startPose), new Point(scoreSpecimenPreload)));
+        scorePreload.setConstantHeadingInterpolation(Math.toRadians(0));
 
 
 
         /*** Pushing 1st Sample Into Observation Zone ***/
         Point controlPoint1 = new Point(15, 40);
-        push1stSample1 = new Path(new BezierCurve(new Point(scoreSpecimenPreload1), controlPoint1, new Point(push1stSampleIntoObservationZone1)));
+        push1stSample1 = new Path(new BezierCurve(new Point(scoreSpecimenPreload), controlPoint1, new Point(push1stSampleIntoObservationZone1)));
         push1stSample1.setConstantHeadingInterpolation(Math.toRadians(0));
 
         Point controlPoint2 = new Point(56.5, 30);
@@ -231,24 +239,32 @@ public class Dougie5SpecAuton extends LinearOpMode {
         chainedHang4thSpecimen = new PathChain(hang4thSpecimen1, hang4thSpecimen2);
 
 
-         /*
-        /*** Hanging 5th Specimen Onto High Bar
-        hang5thSpecimen1 = new Path(new BezierCurve(new Point(hang4thSpecimenOntoHighBar3), hangingSpecimenControlPoint1, new Point(hang5thSpecimenOntoHighBar1)));
+        /*** Hanging 5th Specimen Onto High Bar **/
+        Point collectSpecimenControlPoint5 = new Point(20, 70);
+        Point collectSpecimenControlPoint6 = new Point(45, 30);
+        collect5thSpecimen = new Path(new BezierCurve(new Point(hang4thSpecimenOntoHighBar2), collectSpecimenControlPoint5, collectSpecimenControlPoint6, new Point(collect5thSpecimenFromWall)));
+        collect5thSpecimen.setConstantHeadingInterpolation(Math.toRadians(0));
+
+        Point hangingSpecimenControlPoint6 = new Point(12, 50);
+        hang5thSpecimen1 = new Path(new BezierCurve(new Point(collect5thSpecimenFromWall), hangingSpecimenControlPoint6, new Point(hang5thSpecimenOntoHighBar1)));
         hang5thSpecimen1.setConstantHeadingInterpolation(Math.toRadians(0));
 
         hang5thSpecimen2 = new Path(new BezierLine(new Point(hang5thSpecimenOntoHighBar1), new Point(hang5thSpecimenOntoHighBar2)));
         hang5thSpecimen2.setConstantHeadingInterpolation(Math.toRadians(0));
 
-        hang5thSpecimen3 = new Path(new BezierLine(new Point(hang5thSpecimenOntoHighBar2), new Point(hang5thSpecimenOntoHighBar3)));
-        hang5thSpecimen3.setConstantHeadingInterpolation(Math.toRadians(0));
+        chainedHang5thSpecimen = new PathChain(hang5thSpecimen1, hang5thSpecimen2);
 
-        */
+        /*** Parking In Observation Zone **/
+        Point parkInObservationZoneControlPoint = new Point(20, 70);
+        park = new Path(new BezierCurve(new Point(hang5thSpecimenOntoHighBar2), parkInObservationZoneControlPoint, new Point(parkInObservationZone)));
+        park.setConstantHeadingInterpolation(Math.toRadians(0));
 
     }
 
     public void runOpMode(){
 
         buildPaths();
+        armSubSystem = new DougieArmSubSystem(hardwareMap);
 
         Constants.setConstants(FConstants.class, LConstants.class);
         follower = new Follower(hardwareMap);
@@ -258,20 +274,75 @@ public class Dougie5SpecAuton extends LinearOpMode {
         // Building Autonomous Route
         CommandScheduler.getInstance().schedule(
                 new SequentialCommandGroup(
-                        new FollowPath(follower, scorePreload1),
 
-                        new FollowPath(follower, chained1stSamplePush),
+                        /** Scoring 1st Specimen Preload **/
+                        new InstantCommand(() -> armSubSystem.PositionForSpecimenScoring()),
+                        new WaitCommand(300),
+                        new FollowPath(follower, scorePreload),
+                        new InstantCommand(() -> armSubSystem.ScoreSpecimen()),
+                        new WaitCommand(450),
 
+
+                        /** Pushing All 3 Samples Into Observation Zone **/
+                        new ParallelCommandGroup(
+                                new InstantCommand(() -> armSubSystem.PositionForSpecimenCollection()),
+                                new FollowPath(follower, chained1stSamplePush)
+                        ),
                         new FollowPath(follower, chained2ndSamplePush),
                         new FollowPath(follower, chained3rdSamplePush),
 
+                        /** Collecting + Hanging 2nd Specimen **/
+                        new InstantCommand(() -> armSubSystem.PositionForSpecimenScoring()),
+                        new WaitCommand(300),
                         new FollowPath(follower, chainedHang2ndSpecimen),
 
-                        new FollowPath(follower, collect3rdSpecimen),
-                        new FollowPath(follower, chainedHang3rdSpecimen),
+                        new InstantCommand(() -> armSubSystem.ScoreSpecimen()),
+                        new WaitCommand(450),
 
-                        new FollowPath(follower, collect4thSpecimen),
-                        new FollowPath(follower, chainedHang4thSpecimen)
+                        /** Collecting + Hanging 3rd Specimen **/
+
+                        new ParallelCommandGroup(
+                                new InstantCommand(() -> armSubSystem.PositionForSpecimenCollection()),
+                                new FollowPath(follower, collect3rdSpecimen)
+                        ),
+                        new InstantCommand(() -> armSubSystem.PositionForSpecimenScoring()),
+                        new WaitCommand(300),
+
+                        new FollowPath(follower, chainedHang3rdSpecimen),
+                        new InstantCommand(() -> armSubSystem.ScoreSpecimen()),
+                        new WaitCommand(450),
+
+
+
+                        /** Collecting + Hanging 4th Specimen **/
+
+                        new ParallelCommandGroup(
+                                new InstantCommand(() -> armSubSystem.PositionForSpecimenCollection()),
+                                new FollowPath(follower, collect4thSpecimen)
+                        ),
+                        new InstantCommand(() -> armSubSystem.PositionForSpecimenScoring()),
+                        new WaitCommand(300),
+
+                        new FollowPath(follower, chainedHang4thSpecimen),
+                        new InstantCommand(() -> armSubSystem.ScoreSpecimen()),
+                        new WaitCommand(450),
+
+
+
+
+                        /** Collecting + Hanging 5th Specimen **/
+
+                        new ParallelCommandGroup(
+                                new InstantCommand(() -> armSubSystem.PositionForSpecimenCollection()),
+                                new FollowPath(follower, collect5thSpecimen)
+                        ),
+                        new InstantCommand(() -> armSubSystem.PositionForSpecimenScoring()),
+                        new WaitCommand(300),
+
+                        new FollowPath(follower, chainedHang5thSpecimen),
+                        new InstantCommand(() -> armSubSystem.ScoreSpecimen()),
+                        new WaitCommand(450)
+
                 )
         );
 
@@ -284,6 +355,7 @@ public class Dougie5SpecAuton extends LinearOpMode {
             CommandScheduler.getInstance().run();
             follower.update();
 
+            armSubSystem.VerticalPIDFSlideControl();
         }
 
     }

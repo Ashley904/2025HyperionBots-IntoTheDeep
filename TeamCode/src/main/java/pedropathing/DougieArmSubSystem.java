@@ -157,7 +157,7 @@ public class DougieArmSubSystem extends CommandBase {
 
         CommandScheduler.getInstance().schedule(
                 new SequentialCommandGroup(
-                        new InstantCommand(() -> verticalSlideTargetPosition = 650),
+                        new InstantCommand(() -> verticalSlideTargetPosition = 800),
 
                         new WaitCommand(450),
 
