@@ -123,8 +123,8 @@ public class DougieArmSubSystem extends CommandBase {
                                 new InstantCommand(() -> rotationServo.setPosition(0.125)),
                                 new InstantCommand(() -> controlServo.setPosition(0.19)),
 
-                                new InstantCommand(() -> horizontalLeftServo.setPosition(1)),
-                                new InstantCommand(() -> horizontalRightServo.setPosition(1))
+                                new InstantCommand(() -> horizontalLeftServo.setPosition(0.985)),
+                                new InstantCommand(() -> horizontalRightServo.setPosition(0.985))
                         )
 
                 )
@@ -162,6 +162,44 @@ public class DougieArmSubSystem extends CommandBase {
                         new WaitCommand(450),
 
                         new InstantCommand(() -> gripperServo.setPosition(0.25)),
+                        new InstantCommand(() -> verticalSlideTargetPosition = 0)
+                )
+        );
+    }
+
+    void PositionForSampleHighBasketScoring(){
+
+        CommandScheduler.getInstance().schedule(
+                new SequentialCommandGroup(
+                        new InstantCommand(() -> gripperServo.setPosition(0.5)),
+                        new WaitCommand(350),
+
+                        new InstantCommand(() -> verticalSlideTargetPosition = 2000),
+
+                        new WaitCommand(250),
+
+                        new ParallelCommandGroup(
+                                new InstantCommand(() -> horizontalLeftServo.setPosition(0.7)),
+                                new InstantCommand(() -> horizontalRightServo.setPosition(0.7)),
+
+                                new InstantCommand(() -> controlServo.setPosition(0.4)),
+                                new InstantCommand(() -> rotationServo.setPosition(0.125))
+                        )
+                )
+        );
+    }
+
+    void DropSampleIntoHighBucket(){
+
+        CommandScheduler.getInstance().schedule(
+                new SequentialCommandGroup(
+                        new InstantCommand(() -> gripperServo.setPosition(0.25)),
+
+                        new WaitCommand(300),
+                        new ParallelCommandGroup(
+                                new InstantCommand(() -> horizontalLeftServo.setPosition(0)),
+                                new InstantCommand(() -> horizontalRightServo.setPosition(0))
+                        ),
                         new InstantCommand(() -> verticalSlideTargetPosition = 0)
                 )
         );

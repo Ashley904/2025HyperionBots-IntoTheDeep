@@ -20,8 +20,8 @@ import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import pedropathing.constants.FConstants;
 import pedropathing.constants.LConstants;
 
-@Autonomous(name = "4+1 Specimen Auto ")
-public class Dougie5SpecAuton extends LinearOpMode {
+@Autonomous(name = "5+1 Specimen Auto With Sample Drop ")
+public class Dougie5Spec1SampleAuton extends LinearOpMode {
 
     DougieArmSubSystem armSubSystem;
 
@@ -86,9 +86,10 @@ public class Dougie5SpecAuton extends LinearOpMode {
     private final Pose hang5thSpecimenOntoHighBar2 = new Pose(44, 71.5, Math.toRadians(0));
 
     /**
-     * Parking inside of the observation zone
+     * Collect and Score Sample Into High Bucket
      */
-    private final Pose parkInObservationZone = new Pose(13, 30, Math.toRadians(0));
+    private final Pose collectSampleFromWall = new Pose(13, 34, Math.toRadians(0));
+    private final Pose scoreSampleIntoHighBasket = new Pose(15.5, 123.5, Math.toRadians(0));
 
 
     private Path scorePreload;
@@ -127,7 +128,8 @@ public class Dougie5SpecAuton extends LinearOpMode {
     private Path hang5thSpecimen2;
     private PathChain chainedHang5thSpecimen;
 
-    private Path park;
+    private Path collectSample;
+    private Path scoreSample;
 
 
     public void buildPaths() {
@@ -255,9 +257,17 @@ public class Dougie5SpecAuton extends LinearOpMode {
         chainedHang5thSpecimen = new PathChain(hang5thSpecimen1, hang5thSpecimen2);
 
         /*** Parking In Observation Zone **/
-        Point parkInObservationZoneControlPoint = new Point(20, 70);
-        park = new Path(new BezierCurve(new Point(hang5thSpecimenOntoHighBar2), parkInObservationZoneControlPoint, new Point(parkInObservationZone)));
-        park.setConstantHeadingInterpolation(Math.toRadians(0));
+        Point collectSampleControlPoint1 = new Point(20, 70);
+        Point collectSampleControlPoint2 = new Point(45, 30);
+        collectSample = new Path(new BezierCurve(new Point(hang5thSpecimenOntoHighBar2), collectSampleControlPoint1, collectSampleControlPoint2, new Point(collectSampleFromWall)));
+        collectSample.setConstantHeadingInterpolation(Math.toRadians(0));
+        collectSample.setZeroPowerAccelerationMultiplier(6.5);
+        collectSample.setPathEndTimeoutConstraint(0);
+
+        scoreSample = new Path(new BezierLine(new Point(collectSampleFromWall), new Point(scoreSampleIntoHighBasket)));
+        scoreSample.setLinearHeadingInterpolation(Math.toRadians(0), Math.toRadians(-42));
+        scoreSample.setZeroPowerAccelerationMultiplier(6.5);
+        scoreSample.setPathEndTimeoutConstraint(0);
 
     }
 
@@ -343,8 +353,20 @@ public class Dougie5SpecAuton extends LinearOpMode {
                         new InstantCommand(() -> armSubSystem.ScoreSpecimen()),
                         new WaitCommand(450),
 
-                        /** Park In Obsevation Zone **/
-                        new FollowPath(follower, park)
+
+
+                        /** Collect And Drop Of Sample Into High Basket**/
+
+                        new ParallelCommandGroup(
+                                new InstantCommand(() -> armSubSystem.PositionForSpecimenCollection()),
+                                new FollowPath(follower, collectSample)
+                        ),
+                        new InstantCommand(() -> armSubSystem.PositionForSampleHighBasketScoring()),
+                        new WaitCommand(300),
+
+                        new FollowPath(follower, scoreSample),
+
+                        new InstantCommand(() -> armSubSystem.DropSampleIntoHighBucket())
 
                 )
         );
