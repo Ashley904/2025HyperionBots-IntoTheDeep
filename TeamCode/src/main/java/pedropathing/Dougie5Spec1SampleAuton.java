@@ -69,7 +69,7 @@ public class Dougie5Spec1SampleAuton extends LinearOpMode {
      */
     private final Pose collect3rdSpecimenFromWall = new Pose(13, 34, Math.toRadians(0));
     private final Pose hang3rdSpecimenOntoHighBar1 = new Pose(43.5, 71, Math.toRadians(0));
-    private final Pose hang3rdSpecimenOntoHighBar2 = new Pose(44, 74, Math.toRadians(0));
+    private final Pose hang3rdSpecimenOntoHighBar2 = new Pose(44, 72, Math.toRadians(0));
 
     /**
      * Hanging the 4th specimen onto the high bar

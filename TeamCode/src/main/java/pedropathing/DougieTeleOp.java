@@ -25,7 +25,7 @@ public class DougieTeleOp extends LinearOpMode {
 
 
     /**  Bicubic dynamic acceleration + deceleration variables ***/
-    private static final double minimumDriveSpeed = 0.25;
+    private static final double minimumDriveSpeed = 0.3;
     public static double cubicTerm = 0.5;
     public static double linearTerm = 0.4;
 
