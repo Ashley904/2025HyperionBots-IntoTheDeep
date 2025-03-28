@@ -100,9 +100,9 @@ public class DougieArmSubSystem extends CommandBase {
                         new ParallelCommandGroup(
                                 new InstantCommand(() -> gripperServo.setPosition(0.25)),
                                 new InstantCommand(() -> rotationServo.setPosition(0.125)),
-                                new InstantCommand(() -> controlServo.setPosition(0)),
-                                new InstantCommand(() -> horizontalLeftServo.setPosition(1)),
-                                new InstantCommand(() -> horizontalRightServo.setPosition(1))
+                                new InstantCommand(() -> controlServo.setPosition(0.65)),
+                                new InstantCommand(() -> horizontalLeftServo.setPosition(0)),
+                                new InstantCommand(() -> horizontalRightServo.setPosition(0))
                         ),
 
                         new InstantCommand(() -> verticalSlideTargetPosition = 0)
@@ -121,10 +121,10 @@ public class DougieArmSubSystem extends CommandBase {
                         new ParallelCommandGroup(
                                 new InstantCommand(() -> gripperServo.setPosition(0.25)),
                                 new InstantCommand(() -> rotationServo.setPosition(0.125)),
-                                new InstantCommand(() -> controlServo.setPosition(0.19)),
+                                new InstantCommand(() -> controlServo.setPosition(0.475)),
 
-                                new InstantCommand(() -> horizontalLeftServo.setPosition(0.985)),
-                                new InstantCommand(() -> horizontalRightServo.setPosition(0.985))
+                                new InstantCommand(() -> horizontalLeftServo.setPosition(0.1)),
+                                new InstantCommand(() -> horizontalRightServo.setPosition(0.1))
                         )
 
                 )
@@ -136,16 +136,16 @@ public class DougieArmSubSystem extends CommandBase {
         CommandScheduler.getInstance().schedule(
                 new SequentialCommandGroup(
 
-                        new InstantCommand(() -> gripperServo.setPosition(0.5)),
+                        new InstantCommand(() -> gripperServo.setPosition(0.515)),
                         new WaitCommand(350),
 
                         new ParallelCommandGroup(
-                                new InstantCommand(() -> verticalSlideTargetPosition = 100),
+                                new InstantCommand(() -> verticalSlideTargetPosition = 150),
 
-                                new InstantCommand(() -> horizontalLeftServo.setPosition(0.6)),
-                                new InstantCommand(() -> horizontalRightServo.setPosition(0.6)),
+                                new InstantCommand(() -> horizontalLeftServo.setPosition(0.54)),
+                                new InstantCommand(() -> horizontalRightServo.setPosition(0.54)),
 
-                                new InstantCommand(() -> controlServo.setPosition(0)),
+                                new InstantCommand(() -> controlServo.setPosition(0.65)),
                                 new InstantCommand(() -> rotationServo.setPosition(0.125))
                         )
 
@@ -157,7 +157,7 @@ public class DougieArmSubSystem extends CommandBase {
 
         CommandScheduler.getInstance().schedule(
                 new SequentialCommandGroup(
-                        new InstantCommand(() -> verticalSlideTargetPosition = 800),
+                        new InstantCommand(() -> verticalSlideTargetPosition = 750),
 
                         new WaitCommand(450),
 
@@ -201,6 +201,15 @@ public class DougieArmSubSystem extends CommandBase {
                                 new InstantCommand(() -> horizontalRightServo.setPosition(0))
                         ),
                         new InstantCommand(() -> verticalSlideTargetPosition = 0)
+                )
+        );
+    }
+
+    void PositionForSampleScanning(){
+
+        CommandScheduler.getInstance().schedule(
+                new SequentialCommandGroup(
+                        new InstantCommand(() -> verticalSlideTargetPosition = 1050)
                 )
         );
     }
