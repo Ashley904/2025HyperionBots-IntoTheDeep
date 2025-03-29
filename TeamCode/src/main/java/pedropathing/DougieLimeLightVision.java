@@ -39,6 +39,10 @@ public class DougieLimeLightVision extends LinearOpMode {
     private static final double horizontalSlideKf = 0.00015;
 
     public static double horizontalSlideTicksPerInch = 40;
+    private static final double referenceWorldY = 20.5;
+    public static double distanceScalingGainFar = 0;
+    public static double distanceScalingGainClose = 0.85;
+    public static double blendRange = 6.0;
 
     double horizontalSlideTargetPosition;
     double currentHorizontalSlidePosition;
@@ -196,10 +200,20 @@ public class DougieLimeLightVision extends LinearOpMode {
             }
 
             if (slideReady && savedWorldY > 0) {
-                horizontalSlideTargetPosition = savedWorldY * horizontalSlideTicksPerInch * 1.25; // Adjust as needed
+                double distanceDelta = savedWorldY - referenceWorldY;
+
+                // Use exponential decay to compute scaling gain based on how far sample is
+                double absDelta = Math.abs(distanceDelta);
+                double scalingGain = distanceScalingGainClose * Math.exp(-absDelta / 6.0);  // Adjust denominator for sensitivity
+
+                // Maintain sign of delta (whether further or closer)
+                double scaledY = savedWorldY + (distanceDelta * scalingGain);
+                horizontalSlideTargetPosition = scaledY * horizontalSlideTicksPerInch;
             } else {
                 horizontalSlideTargetPosition = 0;
             }
+
+
 
             HorizontalPIDFSlideControl();
             armSubSystem.VerticalPIDFSlideControl();
