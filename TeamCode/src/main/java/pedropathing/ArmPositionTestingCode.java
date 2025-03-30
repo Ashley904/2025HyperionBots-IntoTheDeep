@@ -15,11 +15,17 @@ public class ArmPositionTestingCode extends LinearOpMode {
     DcMotor verticalSlideRight;
     DcMotor horizontalSlide;
 
+    Servo verticalLeftServo;
+    Servo verticalRightServo;
+    Servo verticalControlServo;
+    Servo verticalGripperServo;
+    Servo verticalRotationServo;
+
     Servo horizontalLeftServo;
     Servo horizontalRightServo;
-    Servo controlServo;
-    Servo gripperServo;
-    Servo rotationServo;
+    Servo horizontalControlServo;
+    Servo horizontalRotationServo;
+    Servo horizontalGripperServo;
 
     public static double kP = 0.006, kI = 0.0, kD = 0.0;
     public static double horizontalKp = 0.006, horizontalKi = 0.0, horizontalKd = 0.0;
@@ -30,10 +36,19 @@ public class ArmPositionTestingCode extends LinearOpMode {
 
     public static int verticalSlideTargetPosition = 0;
     public static int horizontalSlideTargetPosition = 0;
+
+    /** Outtake Positions **/
+    public static double targetVerticalServoPosition = 0.0;
+    public static double targetVerticalControlServoPosition = 0.0;
+    public static double targetVerticalGripperServoPosition = 0.0;
+    public static double targetVerticalRotationServoPosition = 0.0;
+
+    /** Intake Positions **/
     public static double targetHorizontalServoPosition = 0.0;
-    public static double targetControlServoPosition = 0.0;
-    public static double targetGripperServoPosition = 0.0;
-    public static double rotationServoTargetPosition = 0.0;
+    public static double targetHorizontalControlServoPosition = 0.0;
+    public static double targetHorizontalGripperServoPosition = 0.0;
+    public static double targetHorizontalRotationServoPosition = 0.0;
+
     int currentSlidePosition = 0;
     int currentHorizontalSlidePosition = 0;
 
@@ -59,38 +74,67 @@ public class ArmPositionTestingCode extends LinearOpMode {
         horizontalSlide.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
         horizontalSlide.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
 
+        /** Outtake Servos **/
+        verticalLeftServo = hardwareMap.get(Servo.class, "verticalLeftServo");
+        verticalLeftServo.setDirection(Servo.Direction.REVERSE);
+
+        verticalRightServo = hardwareMap.get(Servo.class, "verticalRightServo");
+        verticalRightServo.setDirection(Servo.Direction.FORWARD);
+
+        verticalControlServo = hardwareMap.get(Servo.class, "verticalControlServo");
+        verticalControlServo.setDirection(Servo.Direction.FORWARD);
+
+        verticalGripperServo = hardwareMap.get(Servo.class, "verticalGripperServo");
+        verticalGripperServo.setDirection(Servo.Direction.FORWARD);
+
+        verticalRotationServo = hardwareMap.get(Servo.class, "verticalGripperRotation");
+        verticalRotationServo.setDirection(Servo.Direction.FORWARD);
+
+        /*
+        /** Intake Servos
         horizontalLeftServo = hardwareMap.get(Servo.class, "horizontalLeftServo");
         horizontalLeftServo.setDirection(Servo.Direction.REVERSE);
 
         horizontalRightServo = hardwareMap.get(Servo.class, "horizontalRightServo");
         horizontalRightServo.setDirection(Servo.Direction.FORWARD);
 
-        controlServo = hardwareMap.get(Servo.class, "controlServo");
-        controlServo.setDirection(Servo.Direction.FORWARD);
+        horizontalControlServo = hardwareMap.get(Servo.class, "horizontalControlServo");
+        horizontalControlServo.setDirection(Servo.Direction.FORWARD);
 
-        gripperServo = hardwareMap.get(Servo.class, "gripperServo");
-        gripperServo.setDirection(Servo.Direction.FORWARD);
+        horizontalGripperServo = hardwareMap.get(Servo.class, "horizontalGripperServo");
+        horizontalGripperServo.setDirection(Servo.Direction.REVERSE);
 
-        rotationServo = hardwareMap.get(Servo.class, "gripperRotation");
-        rotationServo.setDirection(Servo.Direction.FORWARD);
+        horizontalRotationServo = hardwareMap.get(Servo.class, "horizontalGripperRotation");
+        horizontalRotationServo.setDirection(Servo.Direction.FORWARD);
+
+         */
 
 
         telemetry.addData("Status: ", "Ready to start...");
         telemetry.update();
 
 
-        horizontalRightServo.setPosition(1);
-
-
-
         waitForStart();
 
         while(opModeIsActive()){
+
+            /** Outake **/
+            verticalLeftServo.setPosition(targetVerticalServoPosition);
+            verticalRightServo.setPosition(targetVerticalServoPosition);
+            verticalControlServo.setPosition(targetVerticalControlServoPosition);
+            verticalGripperServo.setPosition(targetVerticalGripperServoPosition);
+            verticalRotationServo.setPosition(targetVerticalRotationServoPosition);
+
+            /*
+            /** Intake
             horizontalLeftServo.setPosition(targetHorizontalServoPosition);
             horizontalRightServo.setPosition(targetHorizontalServoPosition);
-            controlServo.setPosition(targetControlServoPosition);
-            gripperServo.setPosition(targetGripperServoPosition);
-            rotationServo.setPosition(rotationServoTargetPosition);
+            horizontalControlServo.setPosition(targetHorizontalControlServoPosition);
+            horizontalGripperServo.setPosition(targetHorizontalGripperServoPosition);
+            horizontalRotationServo.setPosition(targetHorizontalRotationServoPosition);
+
+             */
+
 
             HorizontalPIDFControl();
             VerticalPIDFSlideControl();

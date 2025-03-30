@@ -95,7 +95,6 @@ public class DougieTeleOp extends LinearOpMode {
             DriveModeToggling();
             ArmPositionToggling();
             BackgroundOpModeTasks();
-
         }
     }
 
@@ -222,6 +221,7 @@ public class DougieTeleOp extends LinearOpMode {
 
         armSubSystem.VerticalPIDFSlideControl();
         armSubSystem.HorizontalPIDFSlideControl();
+        armSubSystem.updateServos();
 
         CommandScheduler.getInstance().run();
     }

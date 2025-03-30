@@ -19,15 +19,15 @@ public class DougieLimeLightVision extends LinearOpMode {
     private DcMotor horizontalSlide;
     private DcMotor verticalSlideLeft;
     private DcMotor verticalSlideRight;
-    private Servo rotationServo;
 
     public static double IMAGE_CENTER_X = 320.0;
-    public static double FINAL_ALIGNMENT_TOLERANCE = 2.5;
+    public static double FINAL_ALIGNMENT_TOLERANCE = 4;
     public static double MAX_STRAFE_POWER = 0.47;
-    public static double FINE_TUNE_THRESHOLD = 65.0;
+    public static double MIN_EFFECTIVE_STRAFE_POWER = 0.35; // Minimum threshold to overcome static friction
+    public static double FINE_TUNE_THRESHOLD = 50;
 
     public static double kP = 0.0045, kI = 0.005, kD = 3.5;
-    public static double kP_fine = 200, kI_fine = 0.0001, kD_fine = 0.1;
+    public static double kP_fine = 235, kI_fine = 0.0001, kD_fine = 0.1;
 
     private PIDController mainPIDController;
     private PIDController finePIDController;
@@ -40,9 +40,7 @@ public class DougieLimeLightVision extends LinearOpMode {
 
     public static double horizontalSlideTicksPerInch = 40;
     private static final double referenceWorldY = 20.5;
-    public static double distanceScalingGainFar = 0;
-    public static double distanceScalingGainClose = 0.85;
-    public static double blendRange = 6.0;
+    public static double distanceScalingGainClose = -7;
 
     double horizontalSlideTargetPosition;
     double currentHorizontalSlidePosition;
@@ -90,9 +88,6 @@ public class DougieLimeLightVision extends LinearOpMode {
         verticalSlideRight.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
         verticalSlideRight.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
         verticalSlideRight.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
-
-        rotationServo = hardwareMap.get(Servo.class, "gripperRotation");
-        rotationServo.setDirection(Servo.Direction.FORWARD);
 
         limelight = hardwareMap.get(Limelight3A.class, "limelight");
         limelight.setPollRateHz(50);
@@ -167,6 +162,11 @@ public class DougieLimeLightVision extends LinearOpMode {
 
                 double errorRatio = Math.min(1.0, Math.abs(error) / 80.0);
                 double maxPowerAllowed = errorRatio * MAX_STRAFE_POWER;
+
+                if (Math.abs(strafePower) < MIN_EFFECTIVE_STRAFE_POWER && Math.abs(error) > FINAL_ALIGNMENT_TOLERANCE) {
+                    strafePower = Math.copySign(MIN_EFFECTIVE_STRAFE_POWER, strafePower);
+                }
+
                 strafePower = Math.max(-maxPowerAllowed, Math.min(maxPowerAllowed, strafePower));
 
                 telemetry.addLine("[DEBUG] Aligning... Using " + (useFinePID ? "Fine PID (FTCLib)" : "Main PID (FTCLib)"));
@@ -201,19 +201,13 @@ public class DougieLimeLightVision extends LinearOpMode {
 
             if (slideReady && savedWorldY > 0) {
                 double distanceDelta = savedWorldY - referenceWorldY;
-
-                // Use exponential decay to compute scaling gain based on how far sample is
                 double absDelta = Math.abs(distanceDelta);
-                double scalingGain = distanceScalingGainClose * Math.exp(-absDelta / 6.0);  // Adjust denominator for sensitivity
-
-                // Maintain sign of delta (whether further or closer)
+                double scalingGain = distanceScalingGainClose * Math.exp(-absDelta / 6.0);
                 double scaledY = savedWorldY + (distanceDelta * scalingGain);
                 horizontalSlideTargetPosition = scaledY * horizontalSlideTicksPerInch;
             } else {
                 horizontalSlideTargetPosition = 0;
             }
-
-
 
             HorizontalPIDFSlideControl();
             armSubSystem.VerticalPIDFSlideControl();
@@ -224,7 +218,6 @@ public class DougieLimeLightVision extends LinearOpMode {
 
             double clampedAngle = Math.max(-150.0, Math.min(150.0, savedAngle));
             double servoPosition = (clampedAngle + 150.0) / 300.0;
-            rotationServo.setPosition(servoPosition);
 
             telemetry.addData("Gripper Rotation (deg)", savedAngle);
             telemetry.addData("Gripper Servo Pos", servoPosition);
