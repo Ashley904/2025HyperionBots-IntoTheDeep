@@ -1,6 +1,8 @@
 package pedropathing;
 
+import com.acmerobotics.dashboard.FtcDashboard;
 import com.acmerobotics.dashboard.config.Config;
+import com.acmerobotics.dashboard.telemetry.MultipleTelemetry;
 import com.arcrobotics.ftclib.controller.PIDController;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
@@ -27,11 +29,12 @@ public class ArmPositionTestingCode extends LinearOpMode {
     Servo horizontalRotationServo;
     Servo horizontalGripperServo;
 
-    public static double kP = 0.006, kI = 0.0, kD = 0.0;
-    public static double horizontalKp = 0.006, horizontalKi = 0.0, horizontalKd = 0.0;
-    public static double kF = 0.002;
-    public static double horizontalKf = 0.0;
+    public static double kP = 0.023, kI = 0.0, kD = 0.0005;
+    public static double kF = 0.05;
     final double ticksInDegrees = 3.96;
+
+    public static double horizontalKp = 0.0125, horizontalKi = 0.0, horizontalKd = 0.0006;
+    public static double horizontalKf = 0.25;
     final double horizontalTicksInDegrees = 2.09;
 
     public static int verticalSlideTargetPosition = 0;
@@ -109,12 +112,13 @@ public class ArmPositionTestingCode extends LinearOpMode {
 
          */
 
+        telemetry = new MultipleTelemetry(telemetry, FtcDashboard.getInstance().getTelemetry());
 
-        telemetry.addData("Status: ", "Ready to start...");
-        telemetry.update();
-
+        verticalSlideLeft.setPower(0.65);
+        verticalSlideRight.setPower(0.65);
 
         waitForStart();
+
 
         while(opModeIsActive()){
 
@@ -145,32 +149,34 @@ public class ArmPositionTestingCode extends LinearOpMode {
     void VerticalPIDFSlideControl() {
         pidController.setPID(kP, kI, kD);
 
-        currentSlidePosition = -verticalSlideLeft.getCurrentPosition();
+        int currentVerticalSlidePosition = verticalSlideRight.getCurrentPosition();
+        double PID = pidController.calculate(currentVerticalSlidePosition, verticalSlideTargetPosition);
 
-        // Calculate PID and feedforward
-        double pid = pidController.calculate(currentSlidePosition, verticalSlideTargetPosition);
-        double feedForward = Math.cos(Math.toRadians(verticalSlideTargetPosition / ticksInDegrees)) * kF;
-        double adjustment = pid + feedForward;
-
-        adjustment = Math.max(-1.0, Math.min(1.0, adjustment));
+        double feedforward = Math.cos(Math.toRadians(verticalSlideTargetPosition / ticksInDegrees)) * kF;
+        double adjustment = PID + feedforward;
 
         verticalSlideLeft.setPower(adjustment);
         verticalSlideRight.setPower(adjustment);
+
+        telemetry.addData("Vertical Slide Current Position: ", verticalSlideRight.getCurrentPosition());
+        telemetry.addData("Vertical Slide Target Position: ", verticalSlideTargetPosition);
+        telemetry.update();
     }
 
     void HorizontalPIDFControl() {
-        pidController.setPID(horizontalKp, horizontalKi, horizontalKd);
+        horizontalPidController.setPID(horizontalKp, horizontalKi, horizontalKd);
 
-        currentHorizontalSlidePosition = horizontalSlide.getCurrentPosition();
+        int currentVerticalSlidePosition = horizontalSlide.getCurrentPosition();
+        double PID = horizontalPidController.calculate(currentVerticalSlidePosition, horizontalSlideTargetPosition);
 
-        // Calculate PID and feedforward
-        double pid = horizontalPidController.calculate(currentHorizontalSlidePosition, horizontalSlideTargetPosition);
-        double feedForward = Math.cos(Math.toRadians(horizontalSlideTargetPosition / horizontalTicksInDegrees)) * horizontalKf;
-        double adjustment = pid + feedForward;
-
-        adjustment = Math.max(-1.0, Math.min(1.0, adjustment));
+        double feedforward = Math.cos(Math.toRadians(horizontalSlideTargetPosition / horizontalTicksInDegrees)) * horizontalKf;
+        double adjustment = PID + feedforward;
 
         horizontalSlide.setPower(adjustment);
+
+        telemetry.addData("Horizontal Slide Current Position: ", horizontalSlide.getCurrentPosition());
+        telemetry.addData("Horizontal Sldie Target Position: ", horizontalSlideTargetPosition);
+        telemetry.update();
     }
 
 }

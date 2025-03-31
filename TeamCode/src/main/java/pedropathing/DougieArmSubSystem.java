@@ -9,19 +9,19 @@ import com.qualcomm.robotcore.hardware.Servo;
 
 public class DougieArmSubSystem extends CommandBase {
 
-    private static final double verticalSlideKp = 0.0065;
-    private static final double verticalSlideKi = 0;
-    private static final double verticalSlideKd = 0;
-    private static final double verticalSlideKf = 0.002;
+    private static final double verticalSlideKp = 0.023;
+    private static final double verticalSlideKi = 0.0;
+    private static final double verticalSlideKd = 0.0005;
+    private static final double verticalSlideKf = 0.05;
     private final double verticalSlideTicksInDegrees = 3.96;
-
     double verticalSlideTargetPosition;
-    double currentVerticalSlidePosition;
 
-    private static final double horizontalSlideKp = 0.0075;
+
+
+    private static final double horizontalSlideKp = 0.0125;
     private static final double horizontalSlideKi = 0;
-    private static final double horizontalSlideKd = 0.000;
-    private static final double horizontalSlideKf = 0.0002;
+    private static final double horizontalSlideKd = 0.0006;
+    private static final double horizontalSlideKf = 0.25;
     private final double horizontalSlideTicksInDegrees = 2.09;
 
     double horizontalSlideTargetPosition;
@@ -67,10 +67,10 @@ public class DougieArmSubSystem extends CommandBase {
         horizontalSlide.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
         horizontalSlide.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
 
-        verticalLeftServo = new MotionProfiledServo(hardwareMap.get(Servo.class, "verticalLeftServo"), 0.75, true);
-        verticalRightServo = new MotionProfiledServo(hardwareMap.get(Servo.class, "verticalRightServo"), 0.75, false);
+        verticalLeftServo = new MotionProfiledServo(hardwareMap.get(Servo.class, "verticalLeftServo"), 1.0, true);
+        verticalRightServo = new MotionProfiledServo(hardwareMap.get(Servo.class, "verticalRightServo"), 1.0, false);
         verticalControlServo = new MotionProfiledServo(hardwareMap.get(Servo.class, "verticalControlServo"), 1.0, false);
-        verticalGripperServo = new MotionProfiledServo(hardwareMap.get(Servo.class, "verticalGripperServo"), 1.2, false);
+        verticalGripperServo = new MotionProfiledServo(hardwareMap.get(Servo.class, "verticalGripperServo"), 1.0, false);
         verticalRotationServo = new MotionProfiledServo(hardwareMap.get(Servo.class, "verticalGripperRotation"), 1.0, false);
 
         horizontalLeftServo = hardwareMap.get(Servo.class, "horizontalLeftServo");
@@ -85,7 +85,7 @@ public class DougieArmSubSystem extends CommandBase {
         horizontalRotationServo.setDirection(Servo.Direction.FORWARD);
     }
 
-    public void VerticalArmIdlePosition(){
+    public void OuttakeIdlePosition(){
         CommandScheduler.getInstance().schedule(
                 new SequentialCommandGroup(
                         new ParallelCommandGroup(
@@ -100,6 +100,7 @@ public class DougieArmSubSystem extends CommandBase {
         );
     }
 
+    /** Specimen Actions **/
     public void PositionForSpecimenCollection(){
         CommandScheduler.getInstance().schedule(
                 new SequentialCommandGroup(
@@ -107,9 +108,9 @@ public class DougieArmSubSystem extends CommandBase {
                         new ParallelCommandGroup(
                                 new InstantCommand(() -> verticalGripperServo.setTargetPosition(0.25)),
                                 new InstantCommand(() -> verticalRotationServo.setTargetPosition(0.795)),
-                                new InstantCommand(() -> verticalControlServo.setTargetPosition(0.45)),
-                                new InstantCommand(() -> verticalLeftServo.setTargetPosition(0)),
-                                new InstantCommand(() -> verticalRightServo.setTargetPosition(0))
+                                new InstantCommand(() -> verticalControlServo.setTargetPosition(0.43)),
+                                new InstantCommand(() -> verticalLeftServo.setTargetPosition(0.14)),
+                                new InstantCommand(() -> verticalRightServo.setTargetPosition(0.14))
                         )
                 )
         );
@@ -122,7 +123,7 @@ public class DougieArmSubSystem extends CommandBase {
                         new WaitUntilCommand(() -> verticalGripperServo.isAtTarget(185)),
 
                         new ParallelCommandGroup(
-                                new InstantCommand(() -> verticalSlideTargetPosition = 300),
+                                new InstantCommand(() -> verticalSlideTargetPosition = 270),
                                 new InstantCommand(() -> verticalLeftServo.setTargetPosition(0.54)),
                                 new InstantCommand(() -> verticalRightServo.setTargetPosition(0.54)),
                                 new InstantCommand(() -> verticalRotationServo.setTargetPosition(0.795)),
@@ -135,7 +136,7 @@ public class DougieArmSubSystem extends CommandBase {
     public void ScoreSpecimen(){
         CommandScheduler.getInstance().schedule(
                 new SequentialCommandGroup(
-                        new InstantCommand(() -> verticalSlideTargetPosition = 825),
+                        new InstantCommand(() -> verticalSlideTargetPosition = 845),
                         new WaitUntilCommand(() -> isVerticalSlideAtTarget),
                         new InstantCommand(() -> verticalGripperServo.setTargetPosition(0.25)),
                         new InstantCommand(() -> verticalSlideTargetPosition = 0)
@@ -151,16 +152,117 @@ public class DougieArmSubSystem extends CommandBase {
         );
     }
 
-    public void VerticalPIDFSlideControl() {
+
+    /** Sample Actions **/
+    public void TransferSampleToOuttake() {
+        CommandScheduler.getInstance().schedule(
+                new SequentialCommandGroup(
+                        new ParallelCommandGroup(
+                                new InstantCommand(() -> verticalGripperServo.setTargetPosition(0.25)),
+                                new InstantCommand(() -> verticalRotationServo.setTargetPosition(0.125)),
+                                new InstantCommand(() -> verticalSlideTargetPosition = 0)
+                        ),
+                        new WaitUntilCommand(() -> verticalGripperServo.isAtTarget(50)),
+                        new WaitUntilCommand(() -> verticalRotationServo.isAtTarget()),
+
+                        new ParallelCommandGroup(
+                                new InstantCommand(() -> verticalControlServo.setTargetPosition(0.6)),
+                                new InstantCommand(() -> verticalLeftServo.setTargetPosition(0.795)),
+                                new InstantCommand(() -> verticalRightServo.setTargetPosition(0.795))
+                        ),
+
+                        new WaitUntilCommand(() -> verticalControlServo.isAtTarget(50)),
+                        new WaitUntilCommand(() -> verticalLeftServo.isAtTarget(50)),
+                        new WaitUntilCommand(() -> verticalLeftServo.isAtTarget(50)),
+
+                        new InstantCommand(() -> {
+                            verticalLeftServo.setTargetPosition(0.795);
+                            verticalRightServo.setTargetPosition(0.795);
+                            verticalControlServo.setTargetPosition(0.6);
+                        }),
+
+                        new WaitUntilCommand(() -> verticalControlServo.isAtTarget()),
+                        new WaitUntilCommand(() -> verticalLeftServo.isAtTarget(190)),
+                        new WaitUntilCommand(() -> verticalRightServo.isAtTarget(190)),
+
+                        new InstantCommand(() -> verticalGripperServo.setTargetPosition(0.515)),
+                        new WaitUntilCommand(() -> verticalGripperServo.isAtTarget(25)),
+
+                        new ParallelCommandGroup(
+                                new InstantCommand(() -> verticalLeftServo.setTargetPosition(0.5)),
+                                new InstantCommand(() -> verticalRightServo.setTargetPosition(0.5)),
+                                new InstantCommand(() -> verticalRotationServo.setTargetPosition(0.45))
+                        )
+                )
+        );
+    }
+
+
+    void TakeSampleAndGoToSampleIdlePosition(){
+
+        CommandScheduler.getInstance().schedule(
+                new SequentialCommandGroup(
+                        new InstantCommand(() -> verticalGripperServo.setTargetPosition(0.515)),
+                        new WaitUntilCommand(() -> verticalGripperServo.isAtTarget(100)),
+
+                        new ParallelCommandGroup(
+                                new InstantCommand(() -> verticalLeftServo.setTargetPosition(0.5)),
+                                new InstantCommand(() -> verticalRightServo.setTargetPosition(0.5)),
+                                new InstantCommand(() -> verticalRotationServo.setTargetPosition(0.45))
+                        )
+                )
+        );
+    }
+
+    void PositionForHighBucketScoring(){
+
+        CommandScheduler.getInstance().schedule(
+                new ParallelCommandGroup(
+                        new InstantCommand(() -> verticalSlideTargetPosition = 1959),
+                        new InstantCommand(() -> verticalControlServo.setTargetPosition(0.1))
+                )
+        );
+    }
+
+    void ScoreSampleInHighBasket(){
+
+        CommandScheduler.getInstance().schedule(
+                new SequentialCommandGroup(
+                        new InstantCommand(() -> verticalGripperServo.setTargetPosition(0.25)),
+                        new WaitUntilCommand(() -> verticalGripperServo.isAtTarget()),
+
+                        new InstantCommand(() -> verticalControlServo.setTargetPosition(0.5)),
+                        new WaitUntilCommand(() -> verticalControlServo.isAtTarget()),
+
+                        new InstantCommand(() -> verticalSlideTargetPosition = 0),
+                        new InstantCommand(() -> OuttakeIdlePosition())
+                )
+        );
+    }
+
+
+
+
+
+
+
+
+
+
+
+    void VerticalPIDFSlideControl() {
         verticalSlidePIDController.setPID(verticalSlideKp, verticalSlideKi, verticalSlideKd);
-        currentVerticalSlidePosition = -verticalSlideLeft.getCurrentPosition();
-        double pid = verticalSlidePIDController.calculate(currentVerticalSlidePosition, verticalSlideTargetPosition);
-        double feedForward = Math.cos(Math.toRadians(verticalSlideTargetPosition / verticalSlideTicksInDegrees)) * verticalSlideKf;
-        double adjustment = pid + feedForward;
-        adjustment = Math.max(-1.0, Math.min(1.0, adjustment));
+
+        int currentVerticalSlidePosition = verticalSlideRight.getCurrentPosition();
+        double PID = verticalSlidePIDController.calculate(currentVerticalSlidePosition, verticalSlideTargetPosition);
+
+        double feedforward = Math.cos(Math.toRadians(verticalSlideTargetPosition / verticalSlideTicksInDegrees)) * verticalSlideKf;
+        double adjustment = PID + feedforward;
+
         verticalSlideLeft.setPower(adjustment);
         verticalSlideRight.setPower(adjustment);
-        isVerticalSlideAtTarget = Math.abs(currentVerticalSlidePosition - verticalSlideTargetPosition) < 40;
+
+        isVerticalSlideAtTarget = Math.abs(currentVerticalSlidePosition - verticalSlideTargetPosition) < 50;
     }
 
     public void HorizontalPIDFSlideControl() {

@@ -31,13 +31,6 @@ public class MotionProfiledServo {
         this.wasPreviouslyAtTarget = false;
     }
 
-    public double getCurrentPosition() {
-        return currentPosition;
-    }
-
-    public double getTargetPosition() {
-        return targetPosition;
-    }
 
     public boolean isAtTarget() {
         return isAtTarget(150); // default delay 150ms

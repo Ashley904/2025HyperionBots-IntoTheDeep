@@ -50,6 +50,8 @@ public class DougieTeleOp extends LinearOpMode {
     private boolean lastDpadDownState;
     private boolean lockHeading = true;
     private boolean lastLeftBumperState = false;
+    private boolean wasHoldingLeftTrigger = false;
+
 
     ElapsedTime releaseTimer;
 
@@ -78,7 +80,7 @@ public class DougieTeleOp extends LinearOpMode {
         back_left_motor.setDirection(DcMotor.Direction.REVERSE);
         back_right_motor.setDirection(DcMotor.Direction.FORWARD);
 
-        armSubSystem.VerticalArmIdlePosition();
+        armSubSystem.OuttakeIdlePosition();
         CommandScheduler.getInstance().run();
 
         releaseTimer = new ElapsedTime();
@@ -119,6 +121,8 @@ public class DougieTeleOp extends LinearOpMode {
                     .addStep(1.0, 1.0, 200)
                     .build();
             gamepad1.runRumbleEffect(driveModeRumbleUpdate);
+
+            targetHeading = imu.getRobotYawPitchRollAngles().getYaw(AngleUnit.RADIANS);
         } else if (!gamepad1.dpad_down) lastDpadDownState = false;
 
 
@@ -228,6 +232,10 @@ public class DougieTeleOp extends LinearOpMode {
 
 
     private void ArmPositionToggling(){
+
+        if(gamepad1.left_stick_button) armSubSystem.OuttakeIdlePosition(); // Position into idle position
+
+        /** Specimen Actions **/
         // Position for specimen collection
         if (gamepad1.left_bumper) {
             armSubSystem.PositionForSpecimenCollection();
@@ -236,17 +244,28 @@ public class DougieTeleOp extends LinearOpMode {
         }
         // Position for specimen hanging
         else if (lastLeftBumperState) {
-            if (releaseTimer.milliseconds() >= 200) {
+            if (releaseTimer.milliseconds() >= 50) {
                 armSubSystem.PositionForSpecimenScoring();
                 lastLeftBumperState = false;
             }
         }
 
+        if (gamepad1.a) armSubSystem.ScoreSpecimen(); // Hang specimen
 
-        // Hang specimen
-        if (gamepad1.a) {
-            armSubSystem.ScoreSpecimen();
+
+
+        /** Sample Actions **/
+        if(gamepad1.b) armSubSystem.TransferSampleToOuttake();
+
+        if (gamepad1.left_trigger > 0.05) {
+            armSubSystem.PositionForHighBucketScoring();
+            wasHoldingLeftTrigger = true;
+        } else if (wasHoldingLeftTrigger) {
+            armSubSystem.ScoreSampleInHighBasket();
+            wasHoldingLeftTrigger = false;
         }
+
+
     }
 
 
