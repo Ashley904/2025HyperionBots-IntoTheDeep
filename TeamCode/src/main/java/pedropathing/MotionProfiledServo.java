@@ -1,4 +1,3 @@
-// File: MotionProfiledServo.java
 package pedropathing;
 
 import com.qualcomm.robotcore.hardware.Servo;
@@ -33,7 +32,7 @@ public class MotionProfiledServo {
 
 
     public boolean isAtTarget() {
-        return isAtTarget(150); // default delay 150ms
+        return isAtTarget(150); // Defualt delay
     }
 
     public boolean isAtTarget(long requiredStableMillis) {
@@ -74,12 +73,5 @@ public class MotionProfiledServo {
         }
 
         servo.setPosition(reversed ? 1.0 - currentPosition : currentPosition);
-    }
-
-    public void forceSetPosition(double position) {
-        this.currentPosition = position;
-        this.targetPosition = position;
-        this.servo.setPosition(reversed ? 1.0 - position : position);
-        this.wasPreviouslyAtTarget = true;
     }
 }

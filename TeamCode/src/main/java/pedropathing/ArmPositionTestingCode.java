@@ -35,7 +35,7 @@ public class ArmPositionTestingCode extends LinearOpMode {
 
     public static double horizontalKp = 0.0125, horizontalKi = 0.0, horizontalKd = 0.0006;
     public static double horizontalKf = 0.25;
-    final double horizontalTicksInDegrees = 2.09;
+    final double horizontalTicksInDegrees = 3.96;
 
     public static int verticalSlideTargetPosition = 0;
     public static int horizontalSlideTargetPosition = 0;
@@ -73,7 +73,7 @@ public class ArmPositionTestingCode extends LinearOpMode {
         verticalSlideRight.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
 
         horizontalSlide = hardwareMap.get(DcMotor.class, "HorizontalSlide");
-        horizontalSlide.setDirection(DcMotor.Direction.FORWARD);
+        horizontalSlide.setDirection(DcMotor.Direction.REVERSE);
         horizontalSlide.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
         horizontalSlide.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
 

@@ -80,9 +80,6 @@ public class DougieTeleOp extends LinearOpMode {
         back_left_motor.setDirection(DcMotor.Direction.REVERSE);
         back_right_motor.setDirection(DcMotor.Direction.FORWARD);
 
-        armSubSystem.OuttakeIdlePosition();
-        CommandScheduler.getInstance().run();
-
         releaseTimer = new ElapsedTime();
 
         telemetry.addData("Status: ", "Ready to start");
@@ -233,7 +230,8 @@ public class DougieTeleOp extends LinearOpMode {
 
     private void ArmPositionToggling(){
 
-        if(gamepad1.left_stick_button) armSubSystem.OuttakeIdlePosition(); // Position into idle position
+        if(gamepad1.left_stick_button) armSubSystem.OuttakeIdlePosition(); // Outtake Idle Position
+        if(gamepad2.left_stick_button) armSubSystem.IntakeIdlePosition(); // Intake Idle Position
 
         /** Specimen Actions **/
         // Position for specimen collection
@@ -255,13 +253,16 @@ public class DougieTeleOp extends LinearOpMode {
 
 
         /** Sample Actions **/
-        if(gamepad1.b) armSubSystem.TransferSampleToOuttake();
 
-        if (gamepad1.left_trigger > 0.05) {
-            armSubSystem.PositionForHighBucketScoring();
+        // Position for sample collection
+        if (gamepad2.left_trigger > 0.05) {
+            armSubSystem.PositionForSampleCollection();
             wasHoldingLeftTrigger = true;
-        } else if (wasHoldingLeftTrigger) {
-            armSubSystem.ScoreSampleInHighBasket();
+        }
+
+        // Transferring sample to outtake
+        else if(wasHoldingLeftTrigger){
+            armSubSystem.CollectSample();
             wasHoldingLeftTrigger = false;
         }
 

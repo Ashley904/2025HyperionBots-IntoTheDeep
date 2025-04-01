@@ -14,22 +14,18 @@ import com.qualcomm.robotcore.hardware.Servo;
 @TeleOp(name = "AutoAlign_PID_DirectDrive")
 public class DougieLimeLightVision extends LinearOpMode {
 
+    DougieArmSubSystem armSubSystem;
+
     private Limelight3A limelight;
     private DcMotor frontLeft, frontRight, backLeft, backRight;
     private DcMotor horizontalSlide;
-    private DcMotor verticalSlideLeft;
-    private DcMotor verticalSlideRight;
     private Servo gripperRotServo;
 
     public static double IMAGE_CENTER_X = 320.0;
-    public static double FINAL_ALIGNMENT_TOLERANCE = 2.5;
-    public static double MAX_STRAFE_POWER = 0.47;
-    public static double MIN_EFFECTIVE_STRAFE_POWER = 0.375;
-    public static double FINE_TUNE_THRESHOLD = 20;
+    public static double FINAL_ALIGNMENT_TOLERANCE = 3.5;
+    public static double MAX_STRAFE_POWER = 0.3;
 
-    public static double kP = 0.0045, kI = 0.005, kD = 3.5;
-    public static double kP_boost = 0.005;             // ✅ Added
-    public static double maxErrorForBoost = 160;       // ✅ Added
+    public static double kP = 0.01, kI = 0.002, kD = 0.5;
 
     private PIDController mainPIDController;
     private PIDController horizontalSlidePIDController;
@@ -41,7 +37,7 @@ public class DougieLimeLightVision extends LinearOpMode {
 
     public static double horizontalSlideTicksPerInch = 65;
     public static double slideExtensionOffsetInches = 6.889764;
-    public static double logCorrectionFactor = 14.35;
+    public static double logCorrectionFactor = 18.5;
 
     double horizontalSlideTargetPosition;
     double currentHorizontalSlidePosition;
@@ -60,10 +56,9 @@ public class DougieLimeLightVision extends LinearOpMode {
     private double frozenWorldY = 0;
     private double frozenAngle = 0;
 
-    DougieArmSubSystem armSubSystem;
-
     @Override
     public void runOpMode() {
+
         armSubSystem = new DougieArmSubSystem(hardwareMap);
 
         frontLeft = hardwareMap.get(DcMotor.class, "FL");
@@ -82,18 +77,6 @@ public class DougieLimeLightVision extends LinearOpMode {
         horizontalSlide.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
         horizontalSlide.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
 
-        verticalSlideLeft = hardwareMap.get(DcMotor.class, "VerticalSlideLeft");
-        verticalSlideLeft.setDirection(DcMotor.Direction.FORWARD);
-        verticalSlideLeft.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
-        verticalSlideLeft.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
-        verticalSlideLeft.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
-
-        verticalSlideRight = hardwareMap.get(DcMotor.class, "VerticalSlideRight");
-        verticalSlideRight.setDirection(DcMotor.Direction.FORWARD);
-        verticalSlideRight.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
-        verticalSlideRight.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
-        verticalSlideRight.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
-
         gripperRotServo = hardwareMap.get(Servo.class, "horizontalGripperRotation");
 
         limelight = hardwareMap.get(Limelight3A.class, "limelight");
@@ -109,10 +92,11 @@ public class DougieLimeLightVision extends LinearOpMode {
         waitForStart();
 
         while (opModeIsActive()) {
-            armSubSystem.PositionForSampleScanning();
             double strafePower = 0;
 
             if (gamepad1.y) {
+                armSubSystem.PositionForSampleScanning();
+
                 visionEnabled = true;
                 positionAligned = false;
                 slideReady = false;
@@ -154,21 +138,12 @@ public class DougieLimeLightVision extends LinearOpMode {
             lastCorrectedWorldY = correctedWorldY;
 
             if (targetLocked && !positionAligned) {
-                // ✅ Dynamic PID Gain Scaling
-                double boostFactor = Math.min(1.0, Math.abs(error) / maxErrorForBoost);
-                double scaled_kP = kP + (kP_boost * boostFactor);
-                mainPIDController.setPID(scaled_kP, kI, kD);
-
+                mainPIDController.setPID(kP, kI, kD);
                 strafePower = -mainPIDController.calculate(centerX, IMAGE_CENTER_X);
 
-                double errorRatio = Math.min(1.0, Math.abs(error) / 80.0);
-                double maxPowerAllowed = errorRatio * MAX_STRAFE_POWER;
+// Clamp strafePower to avoid extreme values
+                strafePower = Math.max(-MAX_STRAFE_POWER, Math.min(MAX_STRAFE_POWER, strafePower));
 
-                if (Math.abs(strafePower) < MIN_EFFECTIVE_STRAFE_POWER && Math.abs(error) > FINAL_ALIGNMENT_TOLERANCE) {
-                    strafePower = Math.copySign(MIN_EFFECTIVE_STRAFE_POWER, strafePower);
-                }
-
-                strafePower = Math.max(-maxPowerAllowed, Math.min(maxPowerAllowed, strafePower));
 
                 if (Math.abs(error) <= FINAL_ALIGNMENT_TOLERANCE) {
                     alignmentHoldCounter++;
@@ -210,15 +185,12 @@ public class DougieLimeLightVision extends LinearOpMode {
                 horizontalSlideTargetPosition = 0;
             }
 
-            // Gripper servo based on angle
             double clampedAngle = Math.max(-150.0, Math.min(150.0, frozenAngle));
             double servoPosition = (clampedAngle + 150.0) / 300.0;
             gripperRotServo.setPosition(servoPosition);
 
             HorizontalPIDFSlideControl();
             armSubSystem.VerticalPIDFSlideControl();
-
-            CommandScheduler.getInstance().run();
             applyMotorPowers(0, strafePower, 0);
             telemetry.update();
         }
