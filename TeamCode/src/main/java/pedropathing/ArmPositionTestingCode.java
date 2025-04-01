@@ -93,8 +93,8 @@ public class ArmPositionTestingCode extends LinearOpMode {
         verticalRotationServo = hardwareMap.get(Servo.class, "verticalGripperRotation");
         verticalRotationServo.setDirection(Servo.Direction.FORWARD);
 
-        /*
-        /** Intake Servos
+
+        /** Intake Servos **/
         horizontalLeftServo = hardwareMap.get(Servo.class, "horizontalLeftServo");
         horizontalLeftServo.setDirection(Servo.Direction.REVERSE);
 
@@ -110,7 +110,6 @@ public class ArmPositionTestingCode extends LinearOpMode {
         horizontalRotationServo = hardwareMap.get(Servo.class, "horizontalGripperRotation");
         horizontalRotationServo.setDirection(Servo.Direction.FORWARD);
 
-         */
 
         telemetry = new MultipleTelemetry(telemetry, FtcDashboard.getInstance().getTelemetry());
 
@@ -129,15 +128,14 @@ public class ArmPositionTestingCode extends LinearOpMode {
             verticalGripperServo.setPosition(targetVerticalGripperServoPosition);
             verticalRotationServo.setPosition(targetVerticalRotationServoPosition);
 
-            /*
-            /** Intake
+
+            /** Intake **/
             horizontalLeftServo.setPosition(targetHorizontalServoPosition);
             horizontalRightServo.setPosition(targetHorizontalServoPosition);
             horizontalControlServo.setPosition(targetHorizontalControlServoPosition);
             horizontalGripperServo.setPosition(targetHorizontalGripperServoPosition);
             horizontalRotationServo.setPosition(targetHorizontalRotationServoPosition);
 
-             */
 
 
             HorizontalPIDFControl();
