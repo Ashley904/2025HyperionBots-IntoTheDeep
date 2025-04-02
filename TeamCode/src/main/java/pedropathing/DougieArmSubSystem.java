@@ -47,6 +47,8 @@ public class DougieArmSubSystem extends CommandBase {
     MotionProfiledServo horizontalRotationServo;
     MotionProfiledServo horizontalGripperServo;
 
+    private boolean shouldUpdateServos = true;
+
 
     public DougieArmSubSystem(HardwareMap hardwareMap){
         verticalSlidePIDController = new PIDController(verticalSlideKp, verticalSlideKi, verticalSlideKd);
@@ -143,7 +145,9 @@ public class DougieArmSubSystem extends CommandBase {
     public void PositionForSampleScanning(){
         CommandScheduler.getInstance().schedule(
                 new SequentialCommandGroup(
-                        new InstantCommand(() -> verticalSlideTargetPosition = 1050)
+                        new InstantCommand(() -> verticalSlideTargetPosition = 1050),
+
+                        new InstantCommand(() -> LimeLightIntakeIdlePosition())
                 )
         );
     }
@@ -160,10 +164,10 @@ public class DougieArmSubSystem extends CommandBase {
                         new ParallelCommandGroup(
                                 new InstantCommand(() -> horizontalGripperServo.setTargetPosition(0.95)),
                                 new InstantCommand(() -> horizontalControlServo.setTargetPosition(0)),
-                                new InstantCommand(() -> horizontalRotationServo.setTargetPosition(0.165))
+                                new InstantCommand(() -> horizontalRotationServo.setTargetPosition(0.2))
                         ),
 
-                        new WaitUntilCommand(() -> horizontalControlServo.isAtTarget(125)),
+                        new WaitUntilCommand(() -> horizontalControlServo.isAtTarget(100)),
 
                         new ParallelCommandGroup(
                                 new InstantCommand(() -> horizontalLeftServo.setTargetPosition(0.45)),
@@ -196,18 +200,65 @@ public class DougieArmSubSystem extends CommandBase {
         );
     }
 
-    public void LimelightPositionForSampleCollection(){
-
+    public void LimelightPositionForSampleCollection() {
         CommandScheduler.getInstance().schedule(
+                new SequentialCommandGroup(
+                        new InstantCommand(() -> horizontalGripperServo.setTargetPosition(1)),
+                        new WaitUntilCommand(() -> horizontalGripperServo.isAtTarget(35)),
 
-                new ParallelCommandGroup(
-                        new InstantCommand(() -> horizontalLeftServo.setTargetPosition(0.035)),
-                        new InstantCommand(() -> horizontalRightServo.setTargetPosition(0.035)),
-                        new InstantCommand(() -> horizontalControlServo.setTargetPosition(0.25)),
-                        new InstantCommand(() -> horizontalGripperServo.setTargetPosition(0.95))
+                        new ParallelCommandGroup(
+                                new InstantCommand(() -> horizontalLeftServo.setTargetPosition(0.034)),
+                                new InstantCommand(() -> horizontalRightServo.setTargetPosition(0.034)),
+                                new InstantCommand(() -> horizontalControlServo.setTargetPosition(0.315))
+                        )
                 )
         );
     }
+
+
+    public void LimelightCollectSample() {
+        CommandScheduler.getInstance().schedule(
+                new SequentialCommandGroup(
+                        new ParallelCommandGroup(
+                                new InstantCommand(() -> horizontalLeftServo.setTargetPosition(0)),
+                                new InstantCommand(() -> horizontalRightServo.setTargetPosition(0)),
+                                new InstantCommand(() -> horizontalControlServo.setTargetPosition(0.3425))
+                        ),
+
+                        new WaitUntilCommand(() -> horizontalLeftServo.isAtTarget(25)),
+                        new WaitUntilCommand(() -> horizontalRightServo.isAtTarget(25)),
+                        new WaitUntilCommand(() -> horizontalControlServo.isAtTarget(25)),
+
+                        new InstantCommand(() -> horizontalGripperServo.setTargetPosition(0.7)),
+                        new WaitUntilCommand(() -> horizontalGripperServo.isAtTarget(250)),
+
+
+                        new InstantCommand(this::LimeLightIntakeIdlePosition)
+                )
+        );
+    }
+
+
+    public void LimeLightIntakeIdlePosition() {
+        CommandScheduler.getInstance().schedule(
+                new SequentialCommandGroup(
+                        new ParallelCommandGroup(
+                                new InstantCommand(() -> horizontalGripperServo.setTargetPosition(0.7)),
+                                new InstantCommand(() -> horizontalControlServo.setTargetPosition(0)),
+                                new InstantCommand(() -> horizontalRotationServo.setTargetPosition(0.2))
+                        ),
+                        new WaitUntilCommand(() -> horizontalControlServo.isAtTarget(100)),
+                        new ParallelCommandGroup(
+                                new InstantCommand(() -> horizontalLeftServo.setTargetPosition(0.45)),
+                                new InstantCommand(() -> horizontalRightServo.setTargetPosition(0.45))
+                        ),
+                        new WaitUntilCommand(() -> horizontalLeftServo.isAtTarget()),
+                        new WaitUntilCommand(() -> horizontalRightServo.isAtTarget())
+                )
+        );
+    }
+
+
 
     public void CollectSample(){
 
@@ -334,13 +385,6 @@ public class DougieArmSubSystem extends CommandBase {
 
 
 
-
-
-
-
-
-
-
     void VerticalPIDFSlideControl() {
         verticalSlidePIDController.setPID(verticalSlideKp, verticalSlideKi, verticalSlideKd);
 
@@ -366,7 +410,13 @@ public class DougieArmSubSystem extends CommandBase {
         horizontalSlide.setPower(adjustment);
     }
 
+    public void setShouldUpdateServos(boolean enabled) {
+        this.shouldUpdateServos = enabled;
+    }
+
     public void updateServos() {
+        if (!shouldUpdateServos) return;
+
         verticalGripperServo.update();
         verticalLeftServo.update();
         verticalRightServo.update();
@@ -379,4 +429,5 @@ public class DougieArmSubSystem extends CommandBase {
         horizontalControlServo.update();
         horizontalRotationServo.update();
     }
+
 }

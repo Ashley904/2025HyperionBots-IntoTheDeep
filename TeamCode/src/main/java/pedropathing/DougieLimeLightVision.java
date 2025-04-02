@@ -1,3 +1,4 @@
+// File: DougieLimeLightVision.java
 package pedropathing;
 
 import com.acmerobotics.dashboard.config.Config;
@@ -22,10 +23,10 @@ public class DougieLimeLightVision extends LinearOpMode {
     private Servo gripperRotServo;
 
     public static double IMAGE_CENTER_X = 320.0;
-    public static double FINAL_ALIGNMENT_TOLERANCE = 3.5;
+    public static double FINAL_ALIGNMENT_TOLERANCE = 2;
     public static double MAX_STRAFE_POWER = 0.3;
 
-    public static double kP = 0.01, kI = 0.002, kD = 0.5;
+    public static double kP = 0.01, kI = 0.05, kD = 0.000585;
 
     private PIDController mainPIDController;
     private PIDController horizontalSlidePIDController;
@@ -37,14 +38,10 @@ public class DougieLimeLightVision extends LinearOpMode {
 
     public static double horizontalSlideTicksPerInch = 65;
     public static double slideExtensionOffsetInches = 6.889764;
-    public static double logCorrectionFactor = 18.5;
+    public static double logCorrectionFactor = 20;
 
     double horizontalSlideTargetPosition;
     double currentHorizontalSlidePosition;
-
-    private boolean positionAligned = false;
-    private boolean slideReady = false;
-    private boolean visionEnabled = false;
 
     private double savedWorldY = 0;
     private double savedAngle = 0;
@@ -55,6 +52,18 @@ public class DougieLimeLightVision extends LinearOpMode {
     private boolean sampleFrozen = false;
     private double frozenWorldY = 0;
     private double frozenAngle = 0;
+
+    private boolean trianglePressedLastLoop = false;
+    private boolean hasStartedSlide = false;
+
+    private enum VisionState {
+        IDLE,
+        ALIGNING,
+        SLIDE_EXTENDING,
+        COLLECTING
+    }
+
+    private VisionState visionState = VisionState.IDLE;
 
     @Override
     public void runOpMode() {
@@ -92,29 +101,32 @@ public class DougieLimeLightVision extends LinearOpMode {
         waitForStart();
 
         while (opModeIsActive()) {
-            double strafePower = 0;
 
-            if (gamepad1.y) {
-                armSubSystem.PositionForSampleScanning();
+            boolean trianglePressed = gamepad1.y;
 
-                visionEnabled = true;
-                positionAligned = false;
-                slideReady = false;
+            if (trianglePressed && !trianglePressedLastLoop) {
+                armSubSystem.LimeLightIntakeIdlePosition(); // Reset arm to idle
+                armSubSystem.PositionForSampleScanning();   // Go to scanning pose
+                horizontalSlideTargetPosition = 0;          // Reset slide to 0
+                visionState = VisionState.ALIGNING;
                 alignmentHoldCounter = 0;
                 sampleFrozen = false;
-                telemetry.addLine("[INFO] Vision tracking enabled!");
+                hasStartedSlide = false;
+                telemetry.addLine("[INFO] New sample requested. Scanning...");
             }
 
-            if (!visionEnabled) {
+            trianglePressedLastLoop = trianglePressed;
+
+            if (visionState == VisionState.IDLE) {
                 applyMotorPowers(0, 0, 0);
-                telemetry.addLine("[INFO] Waiting for triangle button press to start vision alignment.");
+                telemetry.addLine("[INFO] Waiting for triangle press.");
                 telemetry.update();
                 continue;
             }
 
             LLResult result = limelight.getLatestResult();
             if (result == null || result.getPythonOutput() == null || result.getPythonOutput().length < 7) {
-                telemetry.addLine("[ERROR] No Limelight result or incomplete SnapScript output");
+                telemetry.addLine("[ERROR] Limelight missing or invalid output");
                 applyMotorPowers(0, 0, 0);
                 telemetry.update();
                 continue;
@@ -122,34 +134,24 @@ public class DougieLimeLightVision extends LinearOpMode {
 
             double[] output = result.getPythonOutput();
 
-            boolean lockedYellow = output[0] == 1.0;
-            boolean lockedRed = output[1] == 1.0;
-            boolean lockedBlue = output[2] == 1.0;
-            boolean targetLocked = lockedYellow || lockedRed || lockedBlue;
-
+            boolean locked = output[0] == 1.0 || output[1] == 1.0 || output[2] == 1.0;
             double angle = output[3];
             double centerX = output[4];
             double worldY = output[6];
-
             double error = centerX - IMAGE_CENTER_X;
 
             double correctedWorldY = worldY + (0.015 * Math.pow(worldY, 2)) - 0.75;
             correctedWorldY = 0.8 * correctedWorldY + 0.2 * lastCorrectedWorldY;
             lastCorrectedWorldY = correctedWorldY;
 
-            if (targetLocked && !positionAligned) {
-                mainPIDController.setPID(kP, kI, kD);
-                strafePower = -mainPIDController.calculate(centerX, IMAGE_CENTER_X);
+            double strafePower = 0;
 
-// Clamp strafePower to avoid extreme values
+            if (visionState == VisionState.ALIGNING && locked) {
+                strafePower = -mainPIDController.calculate(centerX, IMAGE_CENTER_X);
                 strafePower = Math.max(-MAX_STRAFE_POWER, Math.min(MAX_STRAFE_POWER, strafePower));
 
-
-                if (Math.abs(error) <= FINAL_ALIGNMENT_TOLERANCE) {
-                    alignmentHoldCounter++;
-                } else {
-                    alignmentHoldCounter = 0;
-                }
+                if (Math.abs(error) <= FINAL_ALIGNMENT_TOLERANCE) alignmentHoldCounter++;
+                else alignmentHoldCounter = 0;
 
                 if (!sampleFrozen && alignmentHoldCounter >= 2) {
                     frozenWorldY = correctedWorldY;
@@ -158,31 +160,30 @@ public class DougieLimeLightVision extends LinearOpMode {
                 }
 
                 if (alignmentHoldCounter >= 3 && Math.abs(error) <= FINAL_ALIGNMENT_TOLERANCE * 1.5) {
-                    positionAligned = true;
-                    alignmentCompleteTime = System.currentTimeMillis();
+                    visionState = VisionState.SLIDE_EXTENDING;
                     savedWorldY = correctedWorldY;
                     savedAngle = angle;
-                }
-            } else {
-                strafePower = 0;
-            }
-
-            if (positionAligned && !slideReady && System.currentTimeMillis() - alignmentCompleteTime >= 250) {
-                slideReady = true;
-                if (!sampleFrozen) {
-                    frozenWorldY = correctedWorldY;
-                    frozenAngle = angle;
-                    sampleFrozen = true;
+                    alignmentCompleteTime = System.currentTimeMillis();
                 }
             }
 
-            double slideYToUse = sampleFrozen ? frozenWorldY : savedWorldY;
-            if ((slideReady || sampleFrozen) && slideYToUse > 0) {
-                double logCorrection = logCorrectionFactor * Math.log10(slideYToUse);
-                double scaledY = slideYToUse + slideExtensionOffsetInches - logCorrection;
-                horizontalSlideTargetPosition = scaledY * horizontalSlideTicksPerInch;
-            } else {
-                horizontalSlideTargetPosition = 0;
+            if (visionState == VisionState.SLIDE_EXTENDING) {
+                double slideY = sampleFrozen ? frozenWorldY : savedWorldY;
+                if (slideY > 0) {
+                    double logCorrection = logCorrectionFactor * Math.log10(slideY);
+                    double scaledY = slideY + slideExtensionOffsetInches - logCorrection;
+                    horizontalSlideTargetPosition = scaledY * horizontalSlideTicksPerInch;
+                }
+
+                if (!hasStartedSlide) {
+                    armSubSystem.LimelightPositionForSampleCollection(); // Run this in parallel while extending
+                    hasStartedSlide = true;
+                }
+
+                if (Math.abs(currentHorizontalSlidePosition - horizontalSlideTargetPosition) <= 15) {
+                    visionState = VisionState.COLLECTING;
+                    armSubSystem.LimelightCollectSample();
+                }
             }
 
             double clampedAngle = Math.max(-150.0, Math.min(150.0, frozenAngle));
@@ -191,25 +192,27 @@ public class DougieLimeLightVision extends LinearOpMode {
 
             HorizontalPIDFSlideControl();
             armSubSystem.VerticalPIDFSlideControl();
+            armSubSystem.updateServos();
+            CommandScheduler.getInstance().run();
             applyMotorPowers(0, strafePower, 0);
+
+            telemetry.addData("State", visionState);
             telemetry.update();
         }
     }
 
     private void applyMotorPowers(double drive, double strafe, double turn) {
-        double frontLeftPower = drive + strafe + turn;
-        double frontRightPower = drive - strafe - turn;
-        double backLeftPower = drive - strafe + turn;
-        double backRightPower = drive + strafe - turn;
+        double fl = drive + strafe + turn;
+        double fr = drive - strafe - turn;
+        double bl = drive - strafe + turn;
+        double br = drive + strafe - turn;
 
-        double max = Math.max(1.0, Math.max(Math.abs(frontLeftPower),
-                Math.max(Math.abs(frontRightPower),
-                        Math.max(Math.abs(backLeftPower), Math.abs(backRightPower)))));
+        double max = Math.max(1.0, Math.max(Math.abs(fl), Math.max(Math.abs(fr), Math.max(Math.abs(bl), Math.abs(br)))));
 
-        frontLeft.setPower(frontLeftPower / max);
-        frontRight.setPower(frontRightPower / max);
-        backLeft.setPower(backLeftPower / max);
-        backRight.setPower(backRightPower / max);
+        frontLeft.setPower(fl / max);
+        frontRight.setPower(fr / max);
+        backLeft.setPower(bl / max);
+        backRight.setPower(br / max);
     }
 
     private void HorizontalPIDFSlideControl() {
@@ -217,10 +220,9 @@ public class DougieLimeLightVision extends LinearOpMode {
         currentHorizontalSlidePosition = horizontalSlide.getCurrentPosition();
 
         double pid = horizontalSlidePIDController.calculate(currentHorizontalSlidePosition, horizontalSlideTargetPosition);
-        double feedForward = Math.cos(Math.toRadians(horizontalSlideTargetPosition / horizontalSlideTicksPerInch)) * horizontalSlideKf;
-        double adjustment = pid + feedForward;
+        double ff = Math.cos(Math.toRadians(horizontalSlideTargetPosition / horizontalSlideTicksPerInch)) * horizontalSlideKf;
+        double output = Math.max(-1.0, Math.min(1.0, pid + ff));
 
-        adjustment = Math.max(-1.0, Math.min(1.0, adjustment));
-        horizontalSlide.setPower(adjustment);
+        horizontalSlide.setPower(output);
     }
 }
