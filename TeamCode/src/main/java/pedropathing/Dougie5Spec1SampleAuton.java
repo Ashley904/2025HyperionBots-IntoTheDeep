@@ -132,7 +132,7 @@ public class Dougie5Spec1SampleAuton extends LinearOpMode {
     private Path collectSample;
     private Path scoreSample;
 
-    //ToDo -> Make auto consistent and speed up
+    //ToDo -> Make auto consistent and speed up auto
 
 
     void buildPaths() {
