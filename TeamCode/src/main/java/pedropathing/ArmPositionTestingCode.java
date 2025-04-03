@@ -113,9 +113,6 @@ public class ArmPositionTestingCode extends LinearOpMode {
 
         telemetry = new MultipleTelemetry(telemetry, FtcDashboard.getInstance().getTelemetry());
 
-        verticalSlideLeft.setPower(0.65);
-        verticalSlideRight.setPower(0.65);
-
         waitForStart();
 
 

@@ -1,4 +1,3 @@
-// File: DougieLimeLightVision.java
 package pedropathing;
 
 import com.acmerobotics.dashboard.config.Config;
@@ -23,10 +22,11 @@ public class DougieLimeLightVision extends LinearOpMode {
     private Servo gripperRotServo;
 
     public static double IMAGE_CENTER_X = 320.0;
-    public static double FINAL_ALIGNMENT_TOLERANCE = 2;
+    public static double ALIGNMENT_OFFSET = -14.85;
+    public static double FINAL_ALIGNMENT_TOLERANCE = 3;
     public static double MAX_STRAFE_POWER = 0.3;
 
-    public static double kP = 0.01, kI = 0.05, kD = 0.000585;
+    public static double kP = 0.0125, kI = 0.05, kD = 0.0;
 
     private PIDController mainPIDController;
     private PIDController horizontalSlidePIDController;
@@ -38,13 +38,14 @@ public class DougieLimeLightVision extends LinearOpMode {
 
     public static double horizontalSlideTicksPerInch = 65;
     public static double slideExtensionOffsetInches = 6.889764;
-    public static double logCorrectionFactor = 20;
+    public static double logCorrectionFactor = 18.2;
 
     double horizontalSlideTargetPosition;
     double currentHorizontalSlidePosition;
 
     private double savedWorldY = 0;
     private double savedAngle = 0;
+    private double savedServoPosition = 0.5;
     private long alignmentCompleteTime = 0;
     private double lastCorrectedWorldY = 0;
     private int alignmentHoldCounter = 0;
@@ -55,10 +56,12 @@ public class DougieLimeLightVision extends LinearOpMode {
 
     private boolean trianglePressedLastLoop = false;
     private boolean hasStartedSlide = false;
+    private boolean hasSetServoAngle = false;
 
     private enum VisionState {
         IDLE,
         ALIGNING,
+        ROTATING_SERVO,
         SLIDE_EXTENDING,
         COLLECTING
     }
@@ -112,6 +115,7 @@ public class DougieLimeLightVision extends LinearOpMode {
                 alignmentHoldCounter = 0;
                 sampleFrozen = false;
                 hasStartedSlide = false;
+                hasSetServoAngle = false;
                 telemetry.addLine("[INFO] New sample requested. Scanning...");
             }
 
@@ -138,7 +142,8 @@ public class DougieLimeLightVision extends LinearOpMode {
             double angle = output[3];
             double centerX = output[4];
             double worldY = output[6];
-            double error = centerX - IMAGE_CENTER_X;
+            double adjustedCenterX = IMAGE_CENTER_X + ALIGNMENT_OFFSET;
+            double error = centerX - adjustedCenterX;
 
             double correctedWorldY = worldY + (0.015 * Math.pow(worldY, 2)) - 0.75;
             correctedWorldY = 0.8 * correctedWorldY + 0.2 * lastCorrectedWorldY;
@@ -147,7 +152,7 @@ public class DougieLimeLightVision extends LinearOpMode {
             double strafePower = 0;
 
             if (visionState == VisionState.ALIGNING && locked) {
-                strafePower = -mainPIDController.calculate(centerX, IMAGE_CENTER_X);
+                strafePower = -mainPIDController.calculate(centerX, adjustedCenterX);
                 strafePower = Math.max(-MAX_STRAFE_POWER, Math.min(MAX_STRAFE_POWER, strafePower));
 
                 if (Math.abs(error) <= FINAL_ALIGNMENT_TOLERANCE) alignmentHoldCounter++;
@@ -160,10 +165,18 @@ public class DougieLimeLightVision extends LinearOpMode {
                 }
 
                 if (alignmentHoldCounter >= 3 && Math.abs(error) <= FINAL_ALIGNMENT_TOLERANCE * 1.5) {
-                    visionState = VisionState.SLIDE_EXTENDING;
+                    visionState = VisionState.ROTATING_SERVO;
                     savedWorldY = correctedWorldY;
                     savedAngle = angle;
+                    savedServoPosition = (Math.max(-150.0, Math.min(150.0, savedAngle)) + 150.0) / 300.0;
                     alignmentCompleteTime = System.currentTimeMillis();
+                }
+            }
+
+            if (visionState == VisionState.ROTATING_SERVO) {
+                gripperRotServo.setPosition(savedServoPosition);
+                if (System.currentTimeMillis() - alignmentCompleteTime >= 200) {
+                    visionState = VisionState.SLIDE_EXTENDING;
                 }
             }
 
@@ -176,7 +189,7 @@ public class DougieLimeLightVision extends LinearOpMode {
                 }
 
                 if (!hasStartedSlide) {
-                    armSubSystem.LimelightPositionForSampleCollection(); // Run this in parallel while extending
+                    armSubSystem.LimelightPositionForSampleCollection();
                     hasStartedSlide = true;
                 }
 
@@ -185,10 +198,6 @@ public class DougieLimeLightVision extends LinearOpMode {
                     armSubSystem.LimelightCollectSample();
                 }
             }
-
-            double clampedAngle = Math.max(-150.0, Math.min(150.0, frozenAngle));
-            double servoPosition = (clampedAngle + 150.0) / 300.0;
-            gripperRotServo.setPosition(servoPosition);
 
             HorizontalPIDFSlideControl();
             armSubSystem.VerticalPIDFSlideControl();

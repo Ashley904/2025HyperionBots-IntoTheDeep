@@ -74,4 +74,8 @@ public class MotionProfiledServo {
 
         servo.setPosition(reversed ? 1.0 - currentPosition : currentPosition);
     }
+
+    public double getTargetPosition() {
+        return targetPosition;
+    }
 }

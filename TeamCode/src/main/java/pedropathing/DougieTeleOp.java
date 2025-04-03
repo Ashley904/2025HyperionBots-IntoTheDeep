@@ -8,6 +8,7 @@ import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.Gamepad;
 import com.qualcomm.robotcore.hardware.IMU;
+import com.qualcomm.robotcore.hardware.Servo;
 import com.qualcomm.robotcore.util.ElapsedTime;
 
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
@@ -51,7 +52,7 @@ public class DougieTeleOp extends LinearOpMode {
     private boolean lockHeading = true;
     private boolean lastLeftBumperState = false;
     private boolean wasHoldingLeftTrigger = false;
-
+    private boolean wasScoringWithLeftTrigger = false;
 
     ElapsedTime releaseTimer;
 
@@ -81,6 +82,12 @@ public class DougieTeleOp extends LinearOpMode {
         back_right_motor.setDirection(DcMotor.Direction.FORWARD);
 
         releaseTimer = new ElapsedTime();
+
+        armSubSystem.IntakeIdlePosition();
+        armSubSystem.OuttakeIdlePosition();
+
+        CommandScheduler.getInstance().run();
+        armSubSystem.updateServos();
 
         telemetry.addData("Status: ", "Ready to start");
         telemetry.update();
@@ -228,45 +235,66 @@ public class DougieTeleOp extends LinearOpMode {
     }
 
 
-    private void ArmPositionToggling(){
+    private void ArmPositionToggling() {
 
-        if(gamepad1.left_stick_button) armSubSystem.OuttakeIdlePosition(); // Outtake Idle Position
-        if(gamepad2.left_stick_button) armSubSystem.IntakeIdlePosition(); // Intake Idle Position
+        // Outtake and Intake Idle Positions
+        if(gamepad1.left_stick_button) armSubSystem.OuttakeIdlePosition();
+        if(gamepad2.left_stick_button) armSubSystem.IntakeIdlePosition();
 
         /** Specimen Actions **/
-        // Position for specimen collection
         if (gamepad1.left_bumper) {
             armSubSystem.PositionForSpecimenCollection();
             lastLeftBumperState = true;
             releaseTimer.reset();
-        }
-        // Position for specimen hanging
-        else if (lastLeftBumperState) {
+        } else if (lastLeftBumperState) {
             if (releaseTimer.milliseconds() >= 50) {
                 armSubSystem.PositionForSpecimenScoring();
                 lastLeftBumperState = false;
             }
         }
 
-        if (gamepad1.a) armSubSystem.ScoreSpecimen(); // Hang specimen
+        if (gamepad1.a) armSubSystem.ScoreSpecimen();
 
+        if(gamepad2.a) armSubSystem.ThrowSampleOutIntoObservationZone();
 
 
         /** Sample Actions **/
+        boolean isCurrentlyHoldingLeftTrigger = gamepad2.left_trigger > 0.05;
 
-        // Position for sample collection
-        if (gamepad2.left_trigger > 0.05) {
-            armSubSystem.PositionForSampleCollection();
-            wasHoldingLeftTrigger = true;
-        }
+        if (isCurrentlyHoldingLeftTrigger) {
+            if (!wasHoldingLeftTrigger) {
+                armSubSystem.PositionForSampleCollection();
+                wasHoldingLeftTrigger = true;
+            }
 
-        // Transferring sample to outtake
-        else if(wasHoldingLeftTrigger){
+            double sensitivity = 30;
+            armSubSystem.horizontalSlideTargetPosition += -gamepad2.left_stick_x * sensitivity;
+            armSubSystem.horizontalSlideTargetPosition = Math.max(0, Math.min(2700, armSubSystem.horizontalSlideTargetPosition));
+
+            double rotationSensitivity = 0.007;
+            double joystickInput = gamepad2.right_stick_x;
+
+            if (Math.abs(joystickInput) > 0.01) {
+                double currentRotation = armSubSystem.horizontalRotationServo.getTargetPosition();
+                double newRotation = currentRotation + (joystickInput * rotationSensitivity);
+                newRotation = Math.max(0.0, Math.min(1.0, newRotation));
+                armSubSystem.horizontalRotationServo.setTargetPosition(newRotation);
+            }
+
+        } else if (wasHoldingLeftTrigger) {
             armSubSystem.CollectSample();
             wasHoldingLeftTrigger = false;
         }
 
+        // Transfer to outtake
+        if (gamepad1.b) armSubSystem.TransferSampleToOuttake();
 
+        if (gamepad1.left_trigger > 0.05 && !wasScoringWithLeftTrigger) {
+            armSubSystem.ScoreSampleInHighBasket();
+            wasScoringWithLeftTrigger = true;
+        } else if (gamepad1.left_trigger <= 0.05) {
+            wasScoringWithLeftTrigger = false;
+        }
     }
 
 
