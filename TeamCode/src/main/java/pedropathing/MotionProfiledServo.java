@@ -32,7 +32,7 @@ public class MotionProfiledServo {
 
 
     public boolean isAtTarget() {
-        return isAtTarget(150); // Defualt delay
+        return isAtTarget(150);
     }
 
     public boolean isAtTarget(long requiredStableMillis) {
