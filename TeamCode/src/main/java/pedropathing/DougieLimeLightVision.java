@@ -1,3 +1,5 @@
+// Revised DougieLimeLightVision.java with pixel-perfect alignment and feedforward added to drive control
+
 package pedropathing;
 
 import com.acmerobotics.dashboard.config.Config;
@@ -25,6 +27,7 @@ public class DougieLimeLightVision extends LinearOpMode {
     public static double ALIGNMENT_OFFSET = -14.85;
     public static double FINAL_ALIGNMENT_TOLERANCE = 3;
     public static double MAX_STRAFE_POWER = 0.3;
+    public static double FEEDFORWARD_STRAFE = 0.04; // New feedforward value
 
     public static double kP = 0.0125, kI = 0.05, kD = 0.0;
 
@@ -57,6 +60,8 @@ public class DougieLimeLightVision extends LinearOpMode {
     private boolean trianglePressedLastLoop = false;
     private boolean hasStartedSlide = false;
     private boolean hasSetServoAngle = false;
+
+    private double previousError = 0;
 
     private enum VisionState {
         IDLE,
@@ -108,9 +113,9 @@ public class DougieLimeLightVision extends LinearOpMode {
             boolean trianglePressed = gamepad1.y;
 
             if (trianglePressed && !trianglePressedLastLoop) {
-                armSubSystem.LimeLightIntakeIdlePosition(); // Reset arm to idle
-                armSubSystem.PositionForSampleScanning();   // Go to scanning pose
-                horizontalSlideTargetPosition = 0;          // Reset slide to 0
+                armSubSystem.LimeLightIntakeIdlePosition();
+                armSubSystem.PositionForSampleScanning();
+                horizontalSlideTargetPosition = 0;
                 visionState = VisionState.ALIGNING;
                 alignmentHoldCounter = 0;
                 sampleFrozen = false;
@@ -151,26 +156,36 @@ public class DougieLimeLightVision extends LinearOpMode {
 
             double strafePower = 0;
 
+            double errorDerivative = Math.abs(error - previousError);
+            previousError = error;
+
             if (visionState == VisionState.ALIGNING && locked) {
-                strafePower = -mainPIDController.calculate(centerX, adjustedCenterX);
+                double pid = -mainPIDController.calculate(centerX, adjustedCenterX);
+                double ff = FEEDFORWARD_STRAFE * Math.signum(error);
+                strafePower = pid + ff;
                 strafePower = Math.max(-MAX_STRAFE_POWER, Math.min(MAX_STRAFE_POWER, strafePower));
 
-                if (Math.abs(error) <= FINAL_ALIGNMENT_TOLERANCE) alignmentHoldCounter++;
+                if (Math.abs(error) <= FINAL_ALIGNMENT_TOLERANCE && errorDerivative < 0.5) alignmentHoldCounter++;
                 else alignmentHoldCounter = 0;
 
-                if (!sampleFrozen && alignmentHoldCounter >= 2) {
+                if (!sampleFrozen && alignmentHoldCounter >= 5) {
                     frozenWorldY = correctedWorldY;
                     frozenAngle = angle;
                     sampleFrozen = true;
                 }
 
-                if (alignmentHoldCounter >= 3 && Math.abs(error) <= FINAL_ALIGNMENT_TOLERANCE * 1.5) {
+                if (alignmentHoldCounter >= 7) {
                     visionState = VisionState.ROTATING_SERVO;
                     savedWorldY = correctedWorldY;
                     savedAngle = angle;
                     savedServoPosition = (Math.max(-150.0, Math.min(150.0, savedAngle)) + 150.0) / 300.0;
                     alignmentCompleteTime = System.currentTimeMillis();
                 }
+            }
+
+            if (visionState.ordinal() >= VisionState.ROTATING_SERVO.ordinal() && Math.abs(error) > FINAL_ALIGNMENT_TOLERANCE * 1.5) {
+                visionState = VisionState.ALIGNING;
+                alignmentHoldCounter = 0;
             }
 
             if (visionState == VisionState.ROTATING_SERVO) {
@@ -206,6 +221,8 @@ public class DougieLimeLightVision extends LinearOpMode {
             applyMotorPowers(0, strafePower, 0);
 
             telemetry.addData("State", visionState);
+            telemetry.addData("Error", error);
+            telemetry.addData("Derivative", errorDerivative);
             telemetry.update();
         }
     }

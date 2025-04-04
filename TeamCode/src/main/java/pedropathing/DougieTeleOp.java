@@ -25,16 +25,16 @@ public class DougieTeleOp extends LinearOpMode {
     DcMotor back_right_motor;
 
 
-    /**  Bicubic dynamic acceleration + deceleration variables ***/
+    /**  Bicubic dynamic variables ***/
     private static final double minimumDriveSpeed = 0.3;
     public static double cubicTerm = 0.5;
     public static double linearTerm = 0.4;
 
 
-    /**  PID Variables ***/
+    /**  PID Constants ***/
     public static double headingKp = 3;
     public static double headingKi = 0;
-    public static double headingKd = 0.275;
+    public static double headingKd = 0.26;
 
 
     /**  Field Centric Stuff ***/
@@ -47,8 +47,8 @@ public class DougieTeleOp extends LinearOpMode {
 
 
     /**  Booleans ***/
-    private boolean lastDpadUpState;
-    private boolean lastDpadDownState;
+    private boolean lastDpadUpState = false;
+    private boolean lastDpadDownState = false;
     private boolean lockHeading = true;
     private boolean lastLeftBumperState = false;
     private boolean wasHoldingLeftTrigger = false;
@@ -56,8 +56,6 @@ public class DougieTeleOp extends LinearOpMode {
 
     ElapsedTime releaseTimer;
 
-
-    /** Drive Mode Toggling **/
     private String currentDriveMode = "Robot Centric";
 
     public void runOpMode(){
@@ -86,14 +84,16 @@ public class DougieTeleOp extends LinearOpMode {
         armSubSystem.IntakeIdlePosition();
         armSubSystem.OuttakeIdlePosition();
 
+        // Idle positions for INTAKE + OUTTAKE
         CommandScheduler.getInstance().run();
         armSubSystem.updateServos();
+        armSubSystem.HorizontalPIDFSlideControl();
+        armSubSystem.VerticalPIDFSlideControl();
 
         telemetry.addData("Status: ", "Ready to start");
         telemetry.update();
 
         waitForStart();
-
         releaseTimer.reset();
         releaseTimer.startTime();
 
@@ -101,6 +101,8 @@ public class DougieTeleOp extends LinearOpMode {
             DriveModeToggling();
             ArmPositionToggling();
             BackgroundOpModeTasks();
+
+            telemetry.update();
         }
     }
 
@@ -134,7 +136,6 @@ public class DougieTeleOp extends LinearOpMode {
         else if (currentDriveMode.equals("Field Centric")) FieldCentricDrive();
     }
     private void FieldCentricDrive(){
-
         double currentHeading = imu.getRobotYawPitchRollAngles().getYaw(AngleUnit.RADIANS);
         if (Math.abs(gamepad1.right_stick_x) <= 0.01) {
             if (!lockHeading) targetHeading = imu.getRobotYawPitchRollAngles().getYaw(AngleUnit.RADIANS);
@@ -146,14 +147,12 @@ public class DougieTeleOp extends LinearOpMode {
             double headingError = targetHeading - currentHeading;
             headingError = Math.IEEEremainder(headingError, 2 * Math.PI);
 
-            if (Math.abs(headingError) < Math.toRadians(2)) {
-                headingCorrection = 0;
-            } else {
-                headingCorrection = FieldCentricPIDController.calculate(headingError);
-            }
+
+            if (Math.abs(headingError) < Math.toRadians(2)) headingCorrection = 0;
+            else headingCorrection = FieldCentricPIDController.calculate(headingError);
         }
 
-        double adjustedDrivingSpeed = cubicTerm * Math.pow(gamepad1.right_trigger, 3) + linearTerm * gamepad1.right_trigger; // Bicubic dynamic speed control
+        double adjustedDrivingSpeed = cubicTerm * Math.pow(gamepad1.right_trigger, 3) + linearTerm * gamepad1.right_trigger; // Bicubic speed control
         adjustedDrivingSpeed = 1.0 - adjustedDrivingSpeed;
 
         adjustedDrivingSpeed = Math.max(adjustedDrivingSpeed, minimumDriveSpeed);
@@ -169,7 +168,6 @@ public class DougieTeleOp extends LinearOpMode {
                     .addStep(1.0, 1.0, 450)
                     .build();
             gamepad1.runRumbleEffect(headingResetRumble);
-
             targetHeading = 0;
         }
 
@@ -232,6 +230,8 @@ public class DougieTeleOp extends LinearOpMode {
         armSubSystem.updateServos();
 
         CommandScheduler.getInstance().run();
+
+        telemetry.addData("Current drive mode: ", currentDriveMode);
     }
 
 
@@ -247,7 +247,7 @@ public class DougieTeleOp extends LinearOpMode {
             lastLeftBumperState = true;
             releaseTimer.reset();
         } else if (lastLeftBumperState) {
-            if (releaseTimer.milliseconds() >= 50) {
+            if (releaseTimer.milliseconds() >= 25) {
                 armSubSystem.PositionForSpecimenScoring();
                 lastLeftBumperState = false;
             }
@@ -255,45 +255,53 @@ public class DougieTeleOp extends LinearOpMode {
 
         if (gamepad1.a) armSubSystem.ScoreSpecimen();
 
-        if(gamepad2.a) armSubSystem.ThrowSampleOutIntoObservationZone();
-
 
         /** Sample Actions **/
-        boolean isCurrentlyHoldingLeftTrigger = gamepad2.left_trigger > 0.05;
-
-        if (isCurrentlyHoldingLeftTrigger) {
+        if (gamepad2.left_trigger > 0.05) {
             if (!wasHoldingLeftTrigger) {
                 armSubSystem.PositionForSampleCollection();
                 wasHoldingLeftTrigger = true;
             }
-
-            double sensitivity = 30;
-            armSubSystem.horizontalSlideTargetPosition += -gamepad2.left_stick_x * sensitivity;
-            armSubSystem.horizontalSlideTargetPosition = Math.max(0, Math.min(2700, armSubSystem.horizontalSlideTargetPosition));
-
-            double rotationSensitivity = 0.007;
-            double joystickInput = gamepad2.right_stick_x;
-
-            if (Math.abs(joystickInput) > 0.01) {
-                double currentRotation = armSubSystem.horizontalRotationServo.getTargetPosition();
-                double newRotation = currentRotation + (joystickInput * rotationSensitivity);
-                newRotation = Math.max(0.0, Math.min(1.0, newRotation));
-                armSubSystem.horizontalRotationServo.setTargetPosition(newRotation);
-            }
+            IntakeOverrideControls(0.05, 35);
 
         } else if (wasHoldingLeftTrigger) {
             armSubSystem.CollectSample();
             wasHoldingLeftTrigger = false;
         }
 
-        // Transfer to outtake
-        if (gamepad1.b) armSubSystem.TransferSampleToOuttake();
+        if (gamepad1.b) armSubSystem.TransferSampleToOuttake(); // Transfer sample to outtake
 
         if (gamepad1.left_trigger > 0.05 && !wasScoringWithLeftTrigger) {
             armSubSystem.ScoreSampleInHighBasket();
             wasScoringWithLeftTrigger = true;
         } else if (gamepad1.left_trigger <= 0.05) {
             wasScoringWithLeftTrigger = false;
+        }
+
+        if(gamepad2.a) armSubSystem.ThrowSampleOutIntoObservationZone();
+    }
+
+    void IntakeOverrideControls(double rotationServoSensitivity, double horizontalSlideSensitivity){
+
+        double robotHeadingDeg = Math.toDegrees(imu.getRobotYawPitchRollAngles().getYaw(AngleUnit.RADIANS));
+        robotHeadingDeg = (robotHeadingDeg + 360) % 360;
+
+        double headingRad = imu.getRobotYawPitchRollAngles().getYaw(AngleUnit.RADIANS);
+        double rotatedX = gamepad2.left_stick_x * Math.cos(-headingRad) - gamepad2.left_stick_y * Math.sin(-headingRad);
+        double rotatedY = gamepad2.left_stick_x * Math.sin(-headingRad) + gamepad2.left_stick_y * Math.cos(-headingRad);
+
+        boolean facingSide = (robotHeadingDeg > 45 && robotHeadingDeg < 135) || (robotHeadingDeg > 225 && robotHeadingDeg < 315);
+        double slideDirection = facingSide ? rotatedY : -rotatedX;
+
+        // Overriding controls
+        armSubSystem.horizontalSlideTargetPosition += slideDirection * horizontalSlideSensitivity;
+        armSubSystem.horizontalSlideTargetPosition = Math.max(0, Math.min(2700, armSubSystem.horizontalSlideTargetPosition));
+
+        if (Math.abs(gamepad2.left_stick_x) > 0.01) {
+            double currentRotation = armSubSystem.horizontalRotationServo.getTargetPosition();
+            double newRotation = currentRotation + (gamepad2.left_stick_x * rotationServoSensitivity);
+            newRotation = Math.max(0.0, Math.min(1.0, newRotation));
+            armSubSystem.horizontalRotationServo.setTargetPosition(newRotation);
         }
     }
 
