@@ -78,7 +78,7 @@ public class DougieArmSubSystem extends CommandBase {
         horizontalRightServo = new MotionProfiledServo(hardwareMap.get(Servo.class, "horizontalRightServo"), 0.785, false);
         horizontalControlServo = new MotionProfiledServo(hardwareMap.get(Servo.class, "horizontalControlServo"), 1.0, false);
         horizontalGripperServo = new MotionProfiledServo(hardwareMap.get(Servo.class, "horizontalGripperServo"), 1.0, true);
-        horizontalRotationServo = new MotionProfiledServo(hardwareMap.get(Servo.class, "horizontalGripperRotation"), 1.0, false);
+        horizontalRotationServo = new MotionProfiledServo(hardwareMap.get(Servo.class, "horizontalGripperRotation"), 1.0, true);
     }
 
     public void OuttakeIdlePosition(){
@@ -457,6 +457,7 @@ public class DougieArmSubSystem extends CommandBase {
 
 
     public void updateServos() {
+        /*
         verticalGripperServo.update();
         verticalLeftServo.update();
         verticalRightServo.update();
@@ -467,6 +468,8 @@ public class DougieArmSubSystem extends CommandBase {
         horizontalLeftServo.update();
         horizontalRightServo.update();
         horizontalControlServo.update();
+
+         */
         horizontalRotationServo.update();
     }
 
