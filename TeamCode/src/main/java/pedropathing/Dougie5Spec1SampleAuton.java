@@ -5,7 +5,6 @@ import com.arcrobotics.ftclib.command.InstantCommand;
 import com.arcrobotics.ftclib.command.ParallelCommandGroup;
 import com.arcrobotics.ftclib.command.SequentialCommandGroup;
 import com.arcrobotics.ftclib.command.WaitCommand;
-import com.arcrobotics.ftclib.command.WaitUntilCommand;
 import com.pedropathing.commands.FollowPath;
 import com.pedropathing.follower.Follower;
 import com.pedropathing.localization.Pose;
@@ -70,7 +69,7 @@ public class Dougie5Spec1SampleAuton extends LinearOpMode {
      */
     private final Pose collect3rdSpecimenFromWall = new Pose(13, 34, Math.toRadians(0));
     private final Pose hang3rdSpecimenOntoHighBar1 = new Pose(43.5, 71, Math.toRadians(0));
-    private final Pose hang3rdSpecimenOntoHighBar2 = new Pose(44, 72, Math.toRadians(0));
+    private final Pose hang3rdSpecimenOntoHighBar2 = new Pose(44, 74, Math.toRadians(0));
 
     /**
      * Hanging the 4th specimen onto the high bar
@@ -132,10 +131,8 @@ public class Dougie5Spec1SampleAuton extends LinearOpMode {
     private Path collectSample;
     private Path scoreSample;
 
-    //ToDo -> Make auto consistent and speed up auto
 
-
-    void buildPaths() {
+    public void buildPaths() {
         /*** Scoring 1st Specimen ***/
         scorePreload = new Path(new BezierLine(new Point(startPose), new Point(scoreSpecimenPreload)));
         scorePreload.setConstantHeadingInterpolation(Math.toRadians(0));
@@ -275,8 +272,11 @@ public class Dougie5Spec1SampleAuton extends LinearOpMode {
     }
 
     public void runOpMode(){
+
+        buildPaths();
         armSubSystem = new DougieArmSubSystem(hardwareMap);
 
+        Constants.setConstants(FConstants.class, LConstants.class);
         follower = new Follower(hardwareMap, FConstants.class, LConstants.class);
         follower.setStartingPose(startPose);
         buildPaths();
@@ -292,7 +292,7 @@ public class Dougie5Spec1SampleAuton extends LinearOpMode {
                         new InstantCommand(() -> armSubSystem.ScoreSpecimen()),
                         new WaitCommand(450),
 
-                        /*
+
                         /** Pushing All 3 Samples Into Observation Zone **/
                         new ParallelCommandGroup(
                                 new InstantCommand(() -> armSubSystem.PositionForSpecimenCollection()),
@@ -351,26 +351,22 @@ public class Dougie5Spec1SampleAuton extends LinearOpMode {
 
                         new FollowPath(follower, chainedHang5thSpecimen),
                         new InstantCommand(() -> armSubSystem.ScoreSpecimen()),
-                        new WaitCommand(450)
+                        new WaitCommand(450),
 
 
 
-                        /*
-                        /** Collect And Drop Of Sample Into High Basket
+                        /** Collect And Drop Of Sample Into High Basket**/
 
                         new ParallelCommandGroup(
                                 new InstantCommand(() -> armSubSystem.PositionForSpecimenCollection()),
                                 new FollowPath(follower, collectSample)
                         ),
-                        new InstantCommand(() -> armSubSystem.PositionForSampleHighBasketScoring()),
+                        new InstantCommand(() -> armSubSystem.PositionForHighBucketScoring()),
                         new WaitCommand(300),
 
                         new FollowPath(follower, scoreSample),
 
-                        new InstantCommand(() -> armSubSystem.DropSampleIntoHighBucket())
-
-                         */
-
+                        new InstantCommand(() -> armSubSystem.ScoreSampleInHighBasket())
 
                 )
         );

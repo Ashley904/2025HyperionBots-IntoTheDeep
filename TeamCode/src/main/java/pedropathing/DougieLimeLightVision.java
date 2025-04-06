@@ -1,5 +1,3 @@
-// Revised DougieLimeLightVision.java with pixel-perfect alignment and feedforward added to drive control
-
 package pedropathing;
 
 import com.acmerobotics.dashboard.config.Config;
@@ -10,230 +8,162 @@ import com.qualcomm.hardware.limelightvision.Limelight3A;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.hardware.DcMotor;
-import com.qualcomm.robotcore.hardware.Servo;
+import com.qualcomm.robotcore.hardware.IMU;
+import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
 
 @Config
-@TeleOp(name = "AutoAlign_PID_DirectDrive")
+@TeleOp(name = "Dougie Auto Align + Slide + Heading Lock")
 public class DougieLimeLightVision extends LinearOpMode {
-
-    DougieArmSubSystem armSubSystem;
 
     private Limelight3A limelight;
     private DcMotor frontLeft, frontRight, backLeft, backRight;
-    private DcMotor horizontalSlide;
-    private Servo gripperRotServo;
+    private IMU imu;
+    DougieArmSubSystem armSubSystem;
 
     public static double IMAGE_CENTER_X = 320.0;
-    public static double ALIGNMENT_OFFSET = -14.85;
-    public static double FINAL_ALIGNMENT_TOLERANCE = 3;
+    public static double ALIGNMENT_OFFSET = 15;
     public static double MAX_STRAFE_POWER = 0.3;
-    public static double FEEDFORWARD_STRAFE = 0.04; // New feedforward value
+    public static double MIN_EFFECTIVE_STRAFE_POWER = 0.2;
+    public static double FINAL_ALIGNMENT_TOLERANCE = 3;
 
-    public static double kP = 0.0125, kI = 0.05, kD = 0.0;
+    public static double kP = 0.0065;
+    public static double kI = 0.000465;
+    public static double kD = 0.0002;
+    public static double kF = 0.005;
 
-    private PIDController mainPIDController;
-    private PIDController horizontalSlidePIDController;
+    public static double headingKp = 3;
+    public static double headingKi = 0;
+    public static double headingKd = 0.275;
 
-    private static final double horizontalSlideKp = 0.006;
-    private static final double horizontalSlideKi = 0;
-    private static final double horizontalSlideKd = 0.00005;
-    private static final double horizontalSlideKf = 0.00015;
-
-    public static double horizontalSlideTicksPerInch = 65;
     public static double slideExtensionOffsetInches = 6.889764;
     public static double logCorrectionFactor = 18.2;
+    public static double horizontalSlideTicksPerInch = 66.5;
 
-    double horizontalSlideTargetPosition;
-    double currentHorizontalSlidePosition;
+    private PIDController alignmentPID;
+    private PIDController headingLockPID;
 
-    private double savedWorldY = 0;
-    private double savedAngle = 0;
-    private double savedServoPosition = 0.5;
-    private long alignmentCompleteTime = 0;
     private double lastCorrectedWorldY = 0;
-    private int alignmentHoldCounter = 0;
-
-    private boolean sampleFrozen = false;
-    private double frozenWorldY = 0;
-    private double frozenAngle = 0;
+    private double targetHeading = 0;
+    private boolean alignmentFinished = false;
+    private boolean slideTargetLocked = false;
+    private double lockedSlideTarget = 0;
 
     private boolean trianglePressedLastLoop = false;
-    private boolean hasStartedSlide = false;
-    private boolean hasSetServoAngle = false;
-
-    private double previousError = 0;
-
-    private enum VisionState {
-        IDLE,
-        ALIGNING,
-        ROTATING_SERVO,
-        SLIDE_EXTENDING,
-        COLLECTING
-    }
-
-    private VisionState visionState = VisionState.IDLE;
 
     @Override
     public void runOpMode() {
 
-        armSubSystem = new DougieArmSubSystem(hardwareMap);
-
-        frontLeft = hardwareMap.get(DcMotor.class, "FL");
-        frontRight = hardwareMap.get(DcMotor.class, "FR");
-        backLeft = hardwareMap.get(DcMotor.class, "BL");
-        backRight = hardwareMap.get(DcMotor.class, "BR");
+        frontLeft = hardwareMap.dcMotor.get("FL");
+        frontRight = hardwareMap.dcMotor.get("FR");
+        backLeft = hardwareMap.dcMotor.get("BL");
+        backRight = hardwareMap.dcMotor.get("BR");
 
         frontLeft.setDirection(DcMotor.Direction.REVERSE);
-        frontRight.setDirection(DcMotor.Direction.FORWARD);
         backLeft.setDirection(DcMotor.Direction.REVERSE);
-        backRight.setDirection(DcMotor.Direction.FORWARD);
 
-        horizontalSlide = hardwareMap.get(DcMotor.class, "HorizontalSlide");
-        horizontalSlide.setDirection(DcMotor.Direction.REVERSE);
-        horizontalSlide.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
-        horizontalSlide.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
-        horizontalSlide.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
-
-        gripperRotServo = hardwareMap.get(Servo.class, "horizontalGripperRotation");
+        imu = hardwareMap.get(IMU.class, "imu");
+        imu.resetYaw();
 
         limelight = hardwareMap.get(Limelight3A.class, "limelight");
         limelight.setPollRateHz(50);
         limelight.start();
 
-        mainPIDController = new PIDController(kP, kI, kD);
-        horizontalSlidePIDController = new PIDController(horizontalSlideKp, horizontalSlideKi, horizontalSlideKd);
+        alignmentPID = new PIDController(kP, kI, kD);
+        headingLockPID = new PIDController(headingKp, headingKi, headingKd);
+        armSubSystem = new DougieArmSubSystem(hardwareMap);
 
-        telemetry.addData("Status: ", "Ready to start...");
+        telemetry.addLine("Ready to align...");
         telemetry.update();
 
         waitForStart();
 
-        while (opModeIsActive()) {
+        targetHeading = imu.getRobotYawPitchRollAngles().getYaw(AngleUnit.RADIANS);
 
+        while (opModeIsActive()) {
             boolean trianglePressed = gamepad1.y;
 
             if (trianglePressed && !trianglePressedLastLoop) {
+                alignmentFinished = false;
+                slideTargetLocked = false;
+                armSubSystem.horizontalSlideTargetPosition = 0;
                 armSubSystem.LimeLightIntakeIdlePosition();
                 armSubSystem.PositionForSampleScanning();
-                horizontalSlideTargetPosition = 0;
-                visionState = VisionState.ALIGNING;
-                alignmentHoldCounter = 0;
-                sampleFrozen = false;
-                hasStartedSlide = false;
-                hasSetServoAngle = false;
-                telemetry.addLine("[INFO] New sample requested. Scanning...");
             }
-
             trianglePressedLastLoop = trianglePressed;
 
-            if (visionState == VisionState.IDLE) {
-                applyMotorPowers(0, 0, 0);
-                telemetry.addLine("[INFO] Waiting for triangle press.");
-                telemetry.update();
-                continue;
-            }
+            armSubSystem.VerticalPIDFSlideControl();
+            armSubSystem.HorizontalPIDFSlideControl();
+            CommandScheduler.getInstance().run();
 
             LLResult result = limelight.getLatestResult();
             if (result == null || result.getPythonOutput() == null || result.getPythonOutput().length < 7) {
-                telemetry.addLine("[ERROR] Limelight missing or invalid output");
-                applyMotorPowers(0, 0, 0);
+                telemetry.addLine("No target detected");
+                applyMotorPowers(0, getHeadingCorrection());
                 telemetry.update();
                 continue;
             }
 
             double[] output = result.getPythonOutput();
-
             boolean locked = output[0] == 1.0 || output[1] == 1.0 || output[2] == 1.0;
-            double angle = output[3];
+
+            if (!locked) {
+                telemetry.addLine("No block locked");
+                applyMotorPowers(0, getHeadingCorrection());
+                telemetry.update();
+                continue;
+            }
+
             double centerX = output[4];
             double worldY = output[6];
-            double adjustedCenterX = IMAGE_CENTER_X + ALIGNMENT_OFFSET;
-            double error = centerX - adjustedCenterX;
+            double targetX = IMAGE_CENTER_X + ALIGNMENT_OFFSET;
+            double error = centerX - targetX;
 
-            double correctedWorldY = worldY + (0.015 * Math.pow(worldY, 2)) - 0.75;
-            correctedWorldY = 0.8 * correctedWorldY + 0.2 * lastCorrectedWorldY;
-            lastCorrectedWorldY = correctedWorldY;
+            alignmentPID.setPID(kP, kI, kD);
+            double pidOutput = -alignmentPID.calculate(centerX, targetX);
+            double ff = Math.signum(error) * kF;
+            double strafePower = pidOutput + ff;
 
-            double strafePower = 0;
+            if (Math.abs(strafePower) < MIN_EFFECTIVE_STRAFE_POWER && Math.abs(error) > FINAL_ALIGNMENT_TOLERANCE) {
+                strafePower = Math.copySign(MIN_EFFECTIVE_STRAFE_POWER, strafePower);
+            }
+            strafePower = Math.max(-MAX_STRAFE_POWER, Math.min(MAX_STRAFE_POWER, strafePower));
 
-            double errorDerivative = Math.abs(error - previousError);
-            previousError = error;
-
-            if (visionState == VisionState.ALIGNING && locked) {
-                double pid = -mainPIDController.calculate(centerX, adjustedCenterX);
-                double ff = FEEDFORWARD_STRAFE * Math.signum(error);
-                strafePower = pid + ff;
-                strafePower = Math.max(-MAX_STRAFE_POWER, Math.min(MAX_STRAFE_POWER, strafePower));
-
-                if (Math.abs(error) <= FINAL_ALIGNMENT_TOLERANCE && errorDerivative < 0.5) alignmentHoldCounter++;
-                else alignmentHoldCounter = 0;
-
-                if (!sampleFrozen && alignmentHoldCounter >= 5) {
-                    frozenWorldY = correctedWorldY;
-                    frozenAngle = angle;
-                    sampleFrozen = true;
-                }
-
-                if (alignmentHoldCounter >= 7) {
-                    visionState = VisionState.ROTATING_SERVO;
-                    savedWorldY = correctedWorldY;
-                    savedAngle = angle;
-                    savedServoPosition = (Math.max(-150.0, Math.min(150.0, savedAngle)) + 150.0) / 300.0;
-                    alignmentCompleteTime = System.currentTimeMillis();
-                }
+            if (!alignmentFinished && Math.abs(error) <= FINAL_ALIGNMENT_TOLERANCE) {
+                alignmentFinished = true;
             }
 
-            if (visionState.ordinal() >= VisionState.ROTATING_SERVO.ordinal() && Math.abs(error) > FINAL_ALIGNMENT_TOLERANCE * 1.5) {
-                visionState = VisionState.ALIGNING;
-                alignmentHoldCounter = 0;
+            if (alignmentFinished && !slideTargetLocked && worldY > 0) {
+                double correctedWorldY = worldY + (0.015 * Math.pow(worldY, 2)) - 0.75;
+                correctedWorldY = 0.8 * correctedWorldY + 0.2 * lastCorrectedWorldY;
+                lastCorrectedWorldY = correctedWorldY;
+
+                double logCorrection = logCorrectionFactor * Math.log10(correctedWorldY);
+                double scaledY = correctedWorldY + slideExtensionOffsetInches - logCorrection;
+                lockedSlideTarget = scaledY * horizontalSlideTicksPerInch;
+                armSubSystem.horizontalSlideTargetPosition = lockedSlideTarget;
+                slideTargetLocked = true;
             }
 
-            if (visionState == VisionState.ROTATING_SERVO) {
-                gripperRotServo.setPosition(savedServoPosition);
-                if (System.currentTimeMillis() - alignmentCompleteTime >= 200) {
-                    visionState = VisionState.SLIDE_EXTENDING;
-                }
-            }
+            applyMotorPowers(alignmentFinished ? 0 : strafePower, getHeadingCorrection());
 
-            if (visionState == VisionState.SLIDE_EXTENDING) {
-                double slideY = sampleFrozen ? frozenWorldY : savedWorldY;
-                if (slideY > 0) {
-                    double logCorrection = logCorrectionFactor * Math.log10(slideY);
-                    double scaledY = slideY + slideExtensionOffsetInches - logCorrection;
-                    horizontalSlideTargetPosition = scaledY * horizontalSlideTicksPerInch;
-                }
-
-                if (!hasStartedSlide) {
-                    armSubSystem.LimelightPositionForSampleCollection();
-                    hasStartedSlide = true;
-                }
-
-                if (Math.abs(currentHorizontalSlidePosition - horizontalSlideTargetPosition) <= 15) {
-                    visionState = VisionState.COLLECTING;
-                    armSubSystem.LimelightCollectSample();
-                }
-            }
-
-            HorizontalPIDFSlideControl();
-            armSubSystem.VerticalPIDFSlideControl();
-            armSubSystem.updateServos();
-            CommandScheduler.getInstance().run();
-            applyMotorPowers(0, strafePower, 0);
-
-            telemetry.addData("State", visionState);
-            telemetry.addData("Error", error);
-            telemetry.addData("Derivative", errorDerivative);
+            telemetry.addData("centerX", centerX);
+            telemetry.addData("targetX", targetX);
+            telemetry.addData("error", error);
+            telemetry.addData("StrafePower", strafePower);
+            telemetry.addData("HeadingCorrection", getHeadingCorrection());
+            telemetry.addData("LockedSlideTarget", lockedSlideTarget);
             telemetry.update();
         }
     }
 
-    private void applyMotorPowers(double drive, double strafe, double turn) {
-        double fl = drive + strafe + turn;
-        double fr = drive - strafe - turn;
-        double bl = drive - strafe + turn;
-        double br = drive + strafe - turn;
+    private void applyMotorPowers(double strafe, double headingCorrection) {
+        double fl = strafe + headingCorrection;
+        double fr = -strafe - headingCorrection;
+        double bl = -strafe + headingCorrection;
+        double br = strafe - headingCorrection;
 
-        double max = Math.max(1.0, Math.max(Math.abs(fl), Math.max(Math.abs(fr), Math.max(Math.abs(bl), Math.abs(br)))));
+        double max = Math.max(1.0, Math.max(Math.abs(fl),
+                Math.max(Math.abs(fr), Math.max(Math.abs(bl), Math.abs(br)))));
 
         frontLeft.setPower(fl / max);
         frontRight.setPower(fr / max);
@@ -241,14 +171,15 @@ public class DougieLimeLightVision extends LinearOpMode {
         backRight.setPower(br / max);
     }
 
-    private void HorizontalPIDFSlideControl() {
-        horizontalSlidePIDController.setPID(horizontalSlideKp, horizontalSlideKi, horizontalSlideKd);
-        currentHorizontalSlidePosition = horizontalSlide.getCurrentPosition();
+    private double getHeadingCorrection() {
+        double currentHeading = imu.getRobotYawPitchRollAngles().getYaw(AngleUnit.RADIANS);
+        double headingError = targetHeading - currentHeading;
+        headingError = Math.IEEEremainder(headingError, 2 * Math.PI);
 
-        double pid = horizontalSlidePIDController.calculate(currentHorizontalSlidePosition, horizontalSlideTargetPosition);
-        double ff = Math.cos(Math.toRadians(horizontalSlideTargetPosition / horizontalSlideTicksPerInch)) * horizontalSlideKf;
-        double output = Math.max(-1.0, Math.min(1.0, pid + ff));
-
-        horizontalSlide.setPower(output);
+        if (Math.abs(headingError) < Math.toRadians(1.5)) {
+            return 0;
+        } else {
+            return headingLockPID.calculate(headingError);
+        }
     }
 }
