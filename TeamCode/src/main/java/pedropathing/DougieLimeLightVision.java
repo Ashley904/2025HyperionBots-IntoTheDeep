@@ -24,25 +24,27 @@ public class DougieLimeLightVision extends LinearOpMode {
     DougieArmSubSystem armSubSystem;
 
     public static double IMAGE_CENTER_X = 320.0;
-    public static double ALIGNMENT_OFFSET = 15;
-    public static double MAX_STRAFE_POWER = 0.3;
-    public static double MIN_EFFECTIVE_STRAFE_POWER = 0.2;
-    public static double FINAL_ALIGNMENT_TOLERANCE = 3;
+    public static double ALIGNMENT_OFFSET = -9.65;
+    public static double MAX_STRAFE_POWER = 0.26;
+    public static double MIN_EFFECTIVE_STRAFE_POWER = 0.2215;
+    public static double FINAL_ALIGNMENT_TOLERANCE = 1;
+    public static int REQUIRED_STABLE_FRAMES = 6;
 
     public static double kP = 0.0065;
     public static double kI = 0.000465;
     public static double kD = 0.0002;
-    public static double kF = 0.00525;
+    public static double kF = 0.0055;
 
     public static double headingKp = 3;
     public static double headingKi = 0;
     public static double headingKd = 0.275;
 
     public static double slideExtensionOffsetInches = 6.889764;
-    public static double logCorrectionFactor = 18.2;
-    public static double horizontalSlideTicksPerInch = 65.2;
+    public static double logCorrectionFactor = 18.05;
+    public static double horizontalSlideTicksPerInch = 57.55;
 
-    public static double ROTATION_OFFSET_DEGREES = 0; // Dashboard-adjustable offset
+    public static double ROTATION_OFFSET_DEGREES = 64.5;
+    public static int SERVO_ROTATION_DELAY_MS = 650; // New: Delay after servo rotation before collection
 
     private PIDController alignmentPID;
     private PIDController headingLockPID;
@@ -52,15 +54,22 @@ public class DougieLimeLightVision extends LinearOpMode {
     private double smoothedAngle = 0;
     private double lockedAngle = 0;
     private double lockedSlideTarget = 0;
+    private double lastRotationOffsetApplied = Double.NaN;
 
     private boolean alignmentFinished = false;
     private boolean slideTargetLocked = false;
     private boolean trianglePressedLastLoop = false;
     private boolean waitingForSlideRetraction = false;
+    private boolean rotationServoPositionLocked = false;
+    private boolean collectionTriggered = false;
+    private boolean servoRotationStarted = false; // New: Track if servo rotation has started
+    private long servoRotationStartTime = 0; // New: Track when servo rotation started
+
+    private int stableFrameCount = 0;
+    private double lastStableX = 0;
 
     @Override
     public void runOpMode() {
-
         rotationServo = hardwareMap.get(Servo.class, "horizontalGripperRotation");
         rotationServo.setDirection(Servo.Direction.REVERSE);
 
@@ -96,6 +105,10 @@ public class DougieLimeLightVision extends LinearOpMode {
                 alignmentFinished = false;
                 slideTargetLocked = false;
                 waitingForSlideRetraction = true;
+                rotationServoPositionLocked = false;
+                collectionTriggered = false;
+                servoRotationStarted = false;
+                stableFrameCount = 0;
                 armSubSystem.horizontalSlideTargetPosition = 0;
                 armSubSystem.LimeLightIntakeIdlePosition();
                 armSubSystem.PositionForSampleScanning();
@@ -104,9 +117,9 @@ public class DougieLimeLightVision extends LinearOpMode {
 
             armSubSystem.VerticalPIDFSlideControl();
             armSubSystem.HorizontalPIDFSlideControl();
+            armSubSystem.updateServos();
             CommandScheduler.getInstance().run();
 
-            // Wait for retraction before starting
             if (waitingForSlideRetraction && Math.abs(armSubSystem.currentHorizontalSlidePosition) <= 50) {
                 waitingForSlideRetraction = false;
             }
@@ -121,6 +134,7 @@ public class DougieLimeLightVision extends LinearOpMode {
             LLResult result = limelight.getLatestResult();
             if (result == null || result.getPythonOutput() == null || result.getPythonOutput().length < 7) {
                 telemetry.addLine("No target detected");
+                stableFrameCount = 0;
                 applyMotorPowers(0, getHeadingCorrection());
                 telemetry.update();
                 continue;
@@ -130,6 +144,7 @@ public class DougieLimeLightVision extends LinearOpMode {
             boolean locked = output[0] == 1.0 || output[1] == 1.0 || output[2] == 1.0;
             if (!locked) {
                 telemetry.addLine("No block locked");
+                stableFrameCount = 0;
                 applyMotorPowers(0, getHeadingCorrection());
                 telemetry.update();
                 continue;
@@ -151,25 +166,50 @@ public class DougieLimeLightVision extends LinearOpMode {
             }
             strafePower = Math.max(-MAX_STRAFE_POWER, Math.min(MAX_STRAFE_POWER, strafePower));
 
-            if (!alignmentFinished && Math.abs(error) <= FINAL_ALIGNMENT_TOLERANCE) {
+            // Check for stable alignment
+            if (Math.abs(error) <= FINAL_ALIGNMENT_TOLERANCE) {
+                if (stableFrameCount == 0 || Math.abs(centerX - lastStableX) < 2.0) {
+                    stableFrameCount++;
+                    lastStableX = centerX;
+                } else {
+                    stableFrameCount = 0;
+                }
+            } else {
+                stableFrameCount = 0;
+            }
+
+            if (!alignmentFinished && stableFrameCount >= REQUIRED_STABLE_FRAMES) {
                 alignmentFinished = true;
             }
 
-            // Update smoothed angle every loop
             smoothedAngle = 0.8 * smoothedAngle + 0.2 * angle;
 
-            if (alignmentFinished) {
-                // Calculate lockedAngle and apply offset live
+            // Start servo rotation as soon as we have a stable angle, even before full alignment
+            if (!servoRotationStarted && stableFrameCount >= 3) { // Changed: Start rotation earlier
                 lockedAngle = ((smoothedAngle % 360) + 360) % 360;
                 if (lockedAngle > 180) lockedAngle = 360 - lockedAngle;
 
                 double finalAngle = lockedAngle + ROTATION_OFFSET_DEGREES;
                 finalAngle = Math.max(0.0, Math.min(180.0, finalAngle));
                 double mappedServoPosition = finalAngle / 180.0;
-                rotationServo.setPosition(mappedServoPosition);
+                armSubSystem.horizontalRotationServo.setTargetPosition(mappedServoPosition);
+
+                lastRotationOffsetApplied = ROTATION_OFFSET_DEGREES;
+                servoRotationStarted = true;
+                servoRotationStartTime = System.currentTimeMillis();
+                rotationServoPositionLocked = true;
             }
 
-            if (alignmentFinished && !slideTargetLocked && worldY > 0) {
+            if (rotationServoPositionLocked && ROTATION_OFFSET_DEGREES != lastRotationOffsetApplied) {
+                double finalAngle = lockedAngle + ROTATION_OFFSET_DEGREES;
+                finalAngle = Math.max(0.0, Math.min(180.0, finalAngle));
+                double mappedServoPosition = finalAngle / 180.0;
+                armSubSystem.horizontalRotationServo.setTargetPosition(mappedServoPosition);
+
+                lastRotationOffsetApplied = ROTATION_OFFSET_DEGREES;
+            }
+
+            if (alignmentFinished && rotationServoPositionLocked && !slideTargetLocked && worldY > 0) {
                 double correctedWorldY = worldY + (0.015 * Math.pow(worldY, 2)) - 0.75;
                 correctedWorldY = 0.8 * correctedWorldY + 0.2 * lastCorrectedWorldY;
                 lastCorrectedWorldY = correctedWorldY;
@@ -180,6 +220,20 @@ public class DougieLimeLightVision extends LinearOpMode {
                 armSubSystem.horizontalSlideTargetPosition = lockedSlideTarget;
 
                 slideTargetLocked = true;
+            }
+
+            // Only proceed with collection if:
+            // 1. We're aligned
+            // 2. Slide is at target
+            // 3. Servo has had time to rotate (500ms)
+            if (alignmentFinished && rotationServoPositionLocked && slideTargetLocked && !collectionTriggered) {
+                long timeSinceServoRotation = System.currentTimeMillis() - servoRotationStartTime;
+                if (timeSinceServoRotation >= SERVO_ROTATION_DELAY_MS) {
+                    armSubSystem.LimelightPositionForSampleCollection();
+                    sleep(300);
+                    armSubSystem.LimelightCollectSample();
+                    collectionTriggered = true;
+                }
             }
 
             applyMotorPowers(alignmentFinished ? 0 : strafePower, getHeadingCorrection());
@@ -195,7 +249,9 @@ public class DougieLimeLightVision extends LinearOpMode {
             telemetry.addData("OffsetAngle", ROTATION_OFFSET_DEGREES);
             telemetry.addData("FinalAngle", lockedAngle + ROTATION_OFFSET_DEGREES);
             telemetry.addData("ServoTargetPos", (lockedAngle + ROTATION_OFFSET_DEGREES) / 180.0);
-            telemetry.addData("ServoCurrentPos", rotationServo.getPosition());
+            telemetry.addData("StableFrameCount", stableFrameCount);
+            telemetry.addData("CollectionTriggered", collectionTriggered);
+            telemetry.addData("TimeSinceServoRotation", System.currentTimeMillis() - servoRotationStartTime);
             telemetry.update();
         }
     }

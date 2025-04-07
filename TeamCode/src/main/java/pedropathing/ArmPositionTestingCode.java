@@ -134,7 +134,6 @@ public class ArmPositionTestingCode extends LinearOpMode {
             horizontalRotationServo.setPosition(targetHorizontalRotationServoPosition);
 
 
-
             HorizontalPIDFControl();
             VerticalPIDFSlideControl();
         }

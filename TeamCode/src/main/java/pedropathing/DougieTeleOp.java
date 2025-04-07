@@ -49,6 +49,8 @@ public class DougieTeleOp extends LinearOpMode {
     /**  Booleans ***/
     private boolean lastDpadUpState;
     private boolean lastDpadDownState;
+    private boolean lastGamepad2DpadUpState;
+    private boolean lastGamepad2DpadDownState;
     private boolean lockHeading = true;
     private boolean lastLeftBumperState = false;
     private boolean wasHoldingLeftTrigger = false;
@@ -57,8 +59,9 @@ public class DougieTeleOp extends LinearOpMode {
     ElapsedTime releaseTimer;
 
 
-    /** Drive Mode Toggling **/
+    /** Drive Mode + Game Mode Selection **/
     private String currentDriveMode = "Robot Centric";
+    private String currentSampleCollectionMode = "Specimen Mode";
 
     public void runOpMode(){
         armSubSystem = new DougieArmSubSystem(hardwareMap);
@@ -106,6 +109,7 @@ public class DougieTeleOp extends LinearOpMode {
 
         while(opModeIsActive()){
             DriveModeToggling();
+            SampleModeToggling();
             ArmPositionToggling();
             BackgroundOpModeTasks();
         }
@@ -288,8 +292,16 @@ public class DougieTeleOp extends LinearOpMode {
             }
 
         } else if (wasHoldingLeftTrigger) {
-            armSubSystem.CollectSample();
-            wasHoldingLeftTrigger = false;
+
+            if(currentSampleCollectionMode.equals("Sample Mode")){
+                armSubSystem.SampleCollectionModeCollectSample();
+                wasHoldingLeftTrigger = false;
+            }
+            else if(currentSampleCollectionMode.equals("Specimen Mode")) {
+                armSubSystem.SpecimenCollectionModeCollectSample();
+                wasHoldingLeftTrigger = false;
+            }
+
         }
 
         // Transfer to outtake
@@ -302,6 +314,29 @@ public class DougieTeleOp extends LinearOpMode {
             wasScoringWithLeftTrigger = false;
         }
     }
+    private void SampleModeToggling(){
+
+        // Toggling sample mode
+        if (gamepad2.dpad_up && !lastGamepad2DpadUpState && !currentDriveMode.equals("Sample Mode")) {
+            lastGamepad2DpadUpState = true;
+            currentSampleCollectionMode = "Sample Mode";
+            Gamepad.RumbleEffect sampleModeRumbleUpdate = new Gamepad.RumbleEffect.Builder()
+                    .addStep(1.0, 1.0, 200)
+                    .build();
+            gamepad2.runRumbleEffect(sampleModeRumbleUpdate);
+        } else if (!gamepad2.dpad_up) lastGamepad2DpadUpState = false;
 
 
+        // Toggling specimen mode
+        if (gamepad2.dpad_down && !lastGamepad2DpadDownState && !currentDriveMode.equals("Specimen Mode")) {
+            lastGamepad2DpadDownState = true;
+            currentSampleCollectionMode = "Specimen Mode";
+            Gamepad.RumbleEffect sampleModeRumbleUpdate = new Gamepad.RumbleEffect.Builder()
+                    .addStep(1.0, 1.0, 200)
+                    .build();
+            gamepad2.runRumbleEffect(sampleModeRumbleUpdate);
+
+        } else if (!gamepad2.dpad_down) lastGamepad2DpadDownState = false;
+
+    }
 }
