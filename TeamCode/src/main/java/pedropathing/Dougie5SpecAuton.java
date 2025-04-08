@@ -35,7 +35,7 @@ public class Dougie5SpecAuton extends LinearOpMode {
     /**
      * Scoring the 1st specimen onto the high bar
      */
-    private final Pose scoreSpecimenPreload = new Pose(41, 77.5, Math.toRadians(0));
+    private final Pose scoreSpecimenPreload = new Pose(42, 77.5, Math.toRadians(0));
 
     /**
      * Pushing the 1st sample into the observation zone
@@ -68,22 +68,22 @@ public class Dougie5SpecAuton extends LinearOpMode {
      * Hanging the 3rd specimen onto the high bar
      */
     private final Pose collect3rdSpecimenFromWall = new Pose(13, 34, Math.toRadians(0));
-    private final Pose hang3rdSpecimenOntoHighBar1 = new Pose(43.5, 71, Math.toRadians(0));
+    private final Pose hang3rdSpecimenOntoHighBar1 = new Pose(43.5, 70, Math.toRadians(0));
     private final Pose hang3rdSpecimenOntoHighBar2 = new Pose(44, 74, Math.toRadians(0));
 
     /**
      * Hanging the 4th specimen onto the high bar
      */
     private final Pose collect4thSpecimenFromWall = new Pose(13, 34, Math.toRadians(0));
-    private final Pose hang4thSpecimenOntoHighBar1 = new Pose(43.5, 71, Math.toRadians(0));
-    private final Pose hang4thSpecimenOntoHighBar2 = new Pose(44, 76, Math.toRadians(0));
+    private final Pose hang4thSpecimenOntoHighBar1 = new Pose(43.5, 75.5, Math.toRadians(0));
+    private final Pose hang4thSpecimenOntoHighBar2 = new Pose(43.5, 76, Math.toRadians(0));
 
     /**
      * Hanging the 5th specimen onto the high bar
      */
     private final Pose collect5thSpecimenFromWall = new Pose(13, 34, Math.toRadians(0));
     private final Pose hang5thSpecimenOntoHighBar1 = new Pose(43.5, 71, Math.toRadians(0));
-    private final Pose hang5thSpecimenOntoHighBar2 = new Pose(44, 71.5, Math.toRadians(0));
+    private final Pose hang5thSpecimenOntoHighBar2 = new Pose(43.5, 71.5, Math.toRadians(0));
 
     /**
      * Parking inside of the observation zone
@@ -277,7 +277,7 @@ public class Dougie5SpecAuton extends LinearOpMode {
 
                         /** Scoring 1st Specimen Preload **/
                         new InstantCommand(() -> armSubSystem.PositionForSpecimenScoring()),
-                        new WaitCommand(300),
+                        new WaitCommand(200),
                         new FollowPath(follower, scorePreload),
                         new InstantCommand(() -> armSubSystem.ScoreSpecimen()),
                         new WaitCommand(450),
@@ -327,9 +327,6 @@ public class Dougie5SpecAuton extends LinearOpMode {
                         new InstantCommand(() -> armSubSystem.ScoreSpecimen()),
                         new WaitCommand(450),
 
-
-
-
                         /** Collecting + Hanging 5th Specimen **/
 
                         new ParallelCommandGroup(
@@ -343,7 +340,6 @@ public class Dougie5SpecAuton extends LinearOpMode {
                         new InstantCommand(() -> armSubSystem.ScoreSpecimen()),
                         new WaitCommand(450),
 
-                        /** Park In Obsevation Zone **/
                         new FollowPath(follower, park)
 
                 )
@@ -358,7 +354,11 @@ public class Dougie5SpecAuton extends LinearOpMode {
             CommandScheduler.getInstance().run();
             follower.update();
 
+            armSubSystem.IntakeOpModeIdlePosition();
+
             armSubSystem.VerticalPIDFSlideControl();
+            armSubSystem.HorizontalPIDFSlideControl();
+            armSubSystem.updateServos();
         }
 
     }

@@ -35,7 +35,7 @@ public class Dougie5Spec1SampleAuton extends LinearOpMode {
     /**
      * Scoring the 1st specimen onto the high bar
      */
-    private final Pose scoreSpecimenPreload = new Pose(41, 77.5, Math.toRadians(0));
+    private final Pose scoreSpecimenPreload = new Pose(42, 77.5, Math.toRadians(0));
 
     /**
      * Pushing the 1st sample into the observation zone
@@ -56,40 +56,40 @@ public class Dougie5Spec1SampleAuton extends LinearOpMode {
      */
     private final Pose push3rdSampleIntoObservationZone1 = new Pose(50, 17.5, Math.toRadians(0));
     private final Pose push3rdSampleIntoObservationZone2 = new Pose(60, 10, Math.toRadians(0));
-    private final Pose push3rdSampleIntoObservationZone3 = new Pose(15, 10, Math.toRadians(0));
+    private final Pose push3rdSampleIntoObservationZone3 = new Pose(18.5, 12.15, Math.toRadians(0));
 
     /**
      * Hanging the 2nd specimen onto the high bar
      */
     private final Pose hang2ndSpecimenOntoHighBar1 = new Pose(43.5, 70.5, Math.toRadians(0));
-    private final Pose hang2ndSpecimenOntoHighBar2 = new Pose(44, 75, Math.toRadians(0));
+    private final Pose hang2ndSpecimenOntoHighBar2 = new Pose(42.9, 75, Math.toRadians(0));
 
     /**
      * Hanging the 3rd specimen onto the high bar
      */
-    private final Pose collect3rdSpecimenFromWall = new Pose(13, 34, Math.toRadians(0));
-    private final Pose hang3rdSpecimenOntoHighBar1 = new Pose(43.5, 71, Math.toRadians(0));
-    private final Pose hang3rdSpecimenOntoHighBar2 = new Pose(44, 74, Math.toRadians(0));
+    private final Pose collect3rdSpecimenFromWall = new Pose(16, 34, Math.toRadians(0));
+    private final Pose hang3rdSpecimenOntoHighBar1 = new Pose(43.5, 71, Math.toRadians (0));
+    private final Pose hang3rdSpecimenOntoHighBar2 = new Pose(42.9, 73.5, Math.toRadians(0));
 
     /**
      * Hanging the 4th specimen onto the high bar
      */
-    private final Pose collect4thSpecimenFromWall = new Pose(13, 34, Math.toRadians(0));
+    private final Pose collect4thSpecimenFromWall = new Pose(16, 34, Math.toRadians(0));
     private final Pose hang4thSpecimenOntoHighBar1 = new Pose(43.5, 71, Math.toRadians(0));
-    private final Pose hang4thSpecimenOntoHighBar2 = new Pose(44, 76, Math.toRadians(0));
+    private final Pose hang4thSpecimenOntoHighBar2 = new Pose(42.9, 73, Math.toRadians(0));
 
     /**
      * Hanging the 5th specimen onto the high bar
      */
-    private final Pose collect5thSpecimenFromWall = new Pose(13, 34, Math.toRadians(0));
+    private final Pose collect5thSpecimenFromWall = new Pose(16, 34, Math.toRadians(0));
     private final Pose hang5thSpecimenOntoHighBar1 = new Pose(43.5, 71, Math.toRadians(0));
-    private final Pose hang5thSpecimenOntoHighBar2 = new Pose(44, 71.5, Math.toRadians(0));
+    private final Pose hang5thSpecimenOntoHighBar2 = new Pose(42.9, 70, Math.toRadians(0));
 
     /**
      * Collect and Score Sample Into High Bucket
      */
-    private final Pose collectSampleFromWall = new Pose(13, 34, Math.toRadians(0));
-    private final Pose scoreSampleIntoHighBasket = new Pose(15.5, 123.5, Math.toRadians(0));
+    private final Pose collectSampleFromWall = new Pose(16, 34, Math.toRadians(0));
+    private final Pose scoreSampleIntoHighBasket = new Pose(21, 120, Math.toRadians(0));
 
 
     private Path scorePreload;
@@ -256,7 +256,7 @@ public class Dougie5Spec1SampleAuton extends LinearOpMode {
 
         chainedHang5thSpecimen = new PathChain(hang5thSpecimen1, hang5thSpecimen2);
 
-        /*** Parking In Observation Zone **/
+        /*** Scoring sample in high bucket **/
         Point collectSampleControlPoint1 = new Point(20, 70);
         Point collectSampleControlPoint2 = new Point(45, 30);
         collectSample = new Path(new BezierCurve(new Point(hang5thSpecimenOntoHighBar2), collectSampleControlPoint1, collectSampleControlPoint2, new Point(collectSampleFromWall)));
@@ -289,6 +289,7 @@ public class Dougie5Spec1SampleAuton extends LinearOpMode {
                         new InstantCommand(() -> armSubSystem.PositionForSpecimenScoring()),
                         new WaitCommand(300),
                         new FollowPath(follower, scorePreload),
+                        new WaitCommand(85),
                         new InstantCommand(() -> armSubSystem.ScoreSpecimen()),
                         new WaitCommand(450),
 
@@ -355,17 +356,16 @@ public class Dougie5Spec1SampleAuton extends LinearOpMode {
 
 
 
-                        /** Collect And Drop Of Sample Into High Basket**/
+                        /** Collect And Drop Of Sample Into High Basket **/
 
                         new ParallelCommandGroup(
                                 new InstantCommand(() -> armSubSystem.PositionForSpecimenCollection()),
                                 new FollowPath(follower, collectSample)
                         ),
                         new InstantCommand(() -> armSubSystem.PositionForHighBucketScoring()),
-                        new WaitCommand(300),
+                        new WaitCommand(750),
 
                         new FollowPath(follower, scoreSample),
-
                         new InstantCommand(() -> armSubSystem.ScoreSampleInHighBasket())
 
                 )
@@ -377,10 +377,15 @@ public class Dougie5Spec1SampleAuton extends LinearOpMode {
         waitForStart();
 
         while(opModeIsActive()){
-            CommandScheduler.getInstance().run();
             follower.update();
 
+            armSubSystem.IntakeOpModeIdlePosition();
+
             armSubSystem.VerticalPIDFSlideControl();
+            armSubSystem.HorizontalPIDFSlideControl();
+            armSubSystem.updateServos();
+
+            CommandScheduler.getInstance().run();
         }
 
     }

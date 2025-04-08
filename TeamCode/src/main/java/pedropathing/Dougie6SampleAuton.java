@@ -6,6 +6,7 @@ import com.arcrobotics.ftclib.command.ParallelCommandGroup;
 import com.arcrobotics.ftclib.command.SequentialCommandGroup;
 import com.arcrobotics.ftclib.command.WaitCommand;
 import com.arcrobotics.ftclib.command.WaitUntilCommand;
+import com.arcrobotics.ftclib.controller.PIDController;
 import com.pedropathing.commands.FollowPath;
 import com.pedropathing.follower.Follower;
 import com.pedropathing.localization.Pose;
@@ -15,268 +16,148 @@ import com.pedropathing.pathgen.Path;
 import com.pedropathing.pathgen.PathChain;
 import com.pedropathing.pathgen.Point;
 import com.pedropathing.util.Constants;
+import com.qualcomm.hardware.limelightvision.LLResult;
+import com.qualcomm.hardware.limelightvision.Limelight3A;
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
+import com.qualcomm.robotcore.hardware.DcMotor;
+import com.qualcomm.robotcore.hardware.IMU;
+import com.qualcomm.robotcore.hardware.Servo;
+import com.qualcomm.robotcore.util.ElapsedTime;
 
 import pedropathing.constants.FConstants;
 import pedropathing.constants.LConstants;
 
-@Autonomous(name = "6 Sample Auto")
+@Autonomous(name = "4 Sample Auto")
 public class Dougie6SampleAuton extends LinearOpMode {
 
     DougieArmSubSystem armSubSystem;
-
     private Follower follower;
-
-    /**
-     * Starting Position of our robot
-     */
-    private final Pose startPose = new Pose(10.5, 60, Math.toRadians(0));
-
-    /**
-     * Scoring the 1st specimen onto the high bar
-     */
-    private final Pose scoreSpecimenPreload = new Pose(41, 77.5, Math.toRadians(0));
-
-    /**
-     * Pushing the 1st sample into the observation zone
-     */
-    private final Pose push1stSampleIntoObservationZone1 = new Pose(46, 36.5, Math.toRadians(0));
-    private final Pose push1stSampleIntoObservationZone2 = new Pose(57, 26.5, Math.toRadians(0));
-    private final Pose push1stSampleIntoObservationZone3 = new Pose(32.5, 26.5, Math.toRadians(0));
-
-    /**
-     * Pushing the 2nd sample into the observation zone
-     */
-    private final Pose push2ndSampleIntoObservationZone1 = new Pose(46.5, 26.5, Math.toRadians(0));
-    private final Pose push2ndSampleIntoObservationZone2 = new Pose(60, 17.5, Math.toRadians(0));
-    private final Pose push2ndSampleIntoObservationZone3 = new Pose(27, 17.5, Math.toRadians(0));
-
-    /**
-     * Pushing the 3rd sample into the observation zone
-     */
-    private final Pose push3rdSampleIntoObservationZone1 = new Pose(50, 17.5, Math.toRadians(0));
-    private final Pose push3rdSampleIntoObservationZone2 = new Pose(60, 10, Math.toRadians(0));
-    private final Pose push3rdSampleIntoObservationZone3 = new Pose(15, 10, Math.toRadians(0));
-
-    /**
-     * Hanging the 2nd specimen onto the high bar
-     */
-    private final Pose hang2ndSpecimenOntoHighBar1 = new Pose(43.5, 70.5, Math.toRadians(0));
-    private final Pose hang2ndSpecimenOntoHighBar2 = new Pose(44, 75, Math.toRadians(0));
-
-    /**
-     * Hanging the 3rd specimen onto the high bar
-     */
-    private final Pose collect3rdSpecimenFromWall = new Pose(13, 34, Math.toRadians(0));
-    private final Pose hang3rdSpecimenOntoHighBar1 = new Pose(43.5, 71, Math.toRadians(0));
-    private final Pose hang3rdSpecimenOntoHighBar2 = new Pose(44, 72, Math.toRadians(0));
-
-    /**
-     * Hanging the 4th specimen onto the high bar
-     */
-    private final Pose collect4thSpecimenFromWall = new Pose(13, 34, Math.toRadians(0));
-    private final Pose hang4thSpecimenOntoHighBar1 = new Pose(43.5, 71, Math.toRadians(0));
-    private final Pose hang4thSpecimenOntoHighBar2 = new Pose(44, 76, Math.toRadians(0));
-
-    /**
-     * Hanging the 5th specimen onto the high bar
-     */
-    private final Pose collect5thSpecimenFromWall = new Pose(13, 34, Math.toRadians(0));
-    private final Pose hang5thSpecimenOntoHighBar1 = new Pose(43.5, 71, Math.toRadians(0));
-    private final Pose hang5thSpecimenOntoHighBar2 = new Pose(44, 71.5, Math.toRadians(0));
-
-    /**
-     * Collect and Score Sample Into High Bucket
-     */
-    private final Pose collectSampleFromWall = new Pose(13, 34, Math.toRadians(0));
-    private final Pose scoreSampleIntoHighBasket = new Pose(15.5, 123.5, Math.toRadians(0));
-
-
-    private Path scorePreload;
-
-    private Path push1stSample1;
-    private Path push1stSample2;
-    private Path push1stSample3;
-    private PathChain chained1stSamplePush;
-
-    private Path push2ndSample1;
-    private Path push2ndSample2;
-    private Path push2ndSample3;
-    private PathChain chained2ndSamplePush;
-
-    private Path push3rdSample1;
-    private Path push3rdSample2;
-    private Path push3rdSample3;
-    private PathChain chained3rdSamplePush;
-
-    private Path hang2ndSpecimen1;
-    private Path hang2ndSpecimen2;
-    private PathChain chainedHang2ndSpecimen;
-
-    private Path collect3rdSpecimen;
-    private Path hang3rdSpecimen1;
-    private Path hang3rdSpecimen2;
-    private PathChain chainedHang3rdSpecimen;
-
-    private Path collect4thSpecimen;
-    private Path hang4thSpecimen1;
-    private Path hang4thSpecimen2;
-    private PathChain chainedHang4thSpecimen;
-
-    private Path collect5thSpecimen;
-    private Path hang5thSpecimen1;
-    private Path hang5thSpecimen2;
-    private PathChain chainedHang5thSpecimen;
-
-    private Path collectSample;
-    private Path scoreSample;
-
-    //ToDo -> Make auto consistent and speed up auto
-
-
-    void buildPaths() {
-        /*** Scoring 1st Specimen ***/
-        scorePreload = new Path(new BezierLine(new Point(startPose), new Point(scoreSpecimenPreload)));
-        scorePreload.setConstantHeadingInterpolation(Math.toRadians(0));
-
-
-
-        /*** Pushing 1st Sample Into Observation Zone ***/
-        Point controlPoint1 = new Point(15, 40);
-        push1stSample1 = new Path(new BezierCurve(new Point(scoreSpecimenPreload), controlPoint1, new Point(push1stSampleIntoObservationZone1)));
-        push1stSample1.setConstantHeadingInterpolation(Math.toRadians(0));
-
-        Point controlPoint2 = new Point(56.5, 30);
-        push1stSample2 = new Path(new BezierCurve(new Point(push1stSampleIntoObservationZone1), controlPoint2, new Point(push1stSampleIntoObservationZone2)));
-        push1stSample2.setConstantHeadingInterpolation(Math.toRadians(0));
-
-        push1stSample3 = new Path(new BezierCurve(new Point(push1stSampleIntoObservationZone2), new Point(push1stSampleIntoObservationZone3)));
-        push1stSample3.setConstantHeadingInterpolation(Math.toRadians(0));
-        push1stSample3.setPathEndTimeoutConstraint(0);
-        push1stSample3.setZeroPowerAccelerationMultiplier(10);
-
-        chained1stSamplePush = new PathChain(push1stSample1, push1stSample2, push1stSample3);
-
-
-
-        /*** Pushing 2nd Sample Into Observation Zone ***/
-        push2ndSample1 = new Path(new BezierLine(new Point(push1stSampleIntoObservationZone3), new Point(push2ndSampleIntoObservationZone1)));
-        push2ndSample1.setConstantHeadingInterpolation(Math.toRadians(0));
-        push2ndSample1.setPathEndTimeoutConstraint(0);
-        push2ndSample1.setZeroPowerAccelerationMultiplier(6.5);
-
-        Point controlPoint4 = new Point(56.5, 24);
-        push2ndSample2 = new Path(new BezierCurve(new Point(push2ndSampleIntoObservationZone1), controlPoint4, new Point(push2ndSampleIntoObservationZone2)));
-        push2ndSample2.setConstantHeadingInterpolation(Math.toRadians(0));
-
-        push2ndSample3 = new Path(new BezierLine(new Point(push2ndSampleIntoObservationZone2), new Point(push2ndSampleIntoObservationZone3)));
-        push2ndSample3.setConstantHeadingInterpolation(Math.toRadians(0));
-        push2ndSample3.setPathEndTimeoutConstraint(5);
-        push2ndSample3.setZeroPowerAccelerationMultiplier(8);
-
-        chained2ndSamplePush = new PathChain(push2ndSample1, push2ndSample2, push2ndSample3);
-
-
-
-        /*** Pushing 3rd Sample Into Observation Zone ***/
-        push3rdSample1 = new Path(new BezierLine(new Point(push2ndSampleIntoObservationZone3), new Point(push3rdSampleIntoObservationZone1)));
-        push3rdSample1.setConstantHeadingInterpolation(Math.toRadians(0));
-
-        Point controlPoint5 = new Point(57, 16.5);
-        push3rdSample2 = new Path(new BezierCurve(new Point(push3rdSampleIntoObservationZone1), controlPoint5, new Point(push3rdSampleIntoObservationZone2)));
-        push3rdSample2.setConstantHeadingInterpolation(Math.toRadians(0));
-
-        push3rdSample3 = new Path(new BezierLine(new Point(push3rdSampleIntoObservationZone2), new Point(push3rdSampleIntoObservationZone3)));
-        push3rdSample3.setConstantHeadingInterpolation(Math.toRadians(0));
-        push3rdSample3.setPathEndTimeoutConstraint(100);
-        push3rdSample3.setZeroPowerAccelerationMultiplier(6);
-
-        chained3rdSamplePush = new PathChain(push3rdSample1, push3rdSample2, push3rdSample3);
-
-
-
-        /*** Hanging 2nd Specimen Onto High Bar ***/
-        Point hangControlPoint1 = new Point(12, 50);
-        hang2ndSpecimen1 = new Path(new BezierCurve(new Point(push3rdSampleIntoObservationZone3), hangControlPoint1, new Point(hang2ndSpecimenOntoHighBar1)));
-        hang2ndSpecimen1.setConstantHeadingInterpolation(Math.toRadians(0));
-        hang2ndSpecimen1.setZeroPowerAccelerationMultiplier(6.5);
-
-        hang2ndSpecimen2 = new Path(new BezierLine(new Point(hang2ndSpecimenOntoHighBar1), new Point(hang2ndSpecimenOntoHighBar2)));
-        hang2ndSpecimen2.setConstantHeadingInterpolation(Math.toRadians(0));
-
-        chainedHang2ndSpecimen = new PathChain(hang2ndSpecimen1, hang2ndSpecimen2);
-
-
-
-        /*** Hanging 3rd Specimen Onto High Bar ***/
-        Point collectSpecimenControlPoint1 = new Point(20, 70);
-        Point collectSpecimenControlPoint2 = new Point(45, 30);
-        collect3rdSpecimen = new Path(new BezierCurve(new Point(hang2ndSpecimenOntoHighBar2), collectSpecimenControlPoint1, collectSpecimenControlPoint2, new Point(collect3rdSpecimenFromWall)));
-        collect3rdSpecimen.setConstantHeadingInterpolation(Math.toRadians(0));
-
-
-        Point hangingSpecimenControlPoint2 = new Point(12, 50);
-        hang3rdSpecimen1 = new Path(new BezierCurve(new Point(collect3rdSpecimenFromWall), hangingSpecimenControlPoint2, new Point(hang3rdSpecimenOntoHighBar1)));
-        hang3rdSpecimen1.setConstantHeadingInterpolation(Math.toRadians(0));
-
-        hang3rdSpecimen2 = new Path(new BezierLine(new Point(hang3rdSpecimenOntoHighBar1), new Point(hang3rdSpecimenOntoHighBar2)));
-        hang3rdSpecimen2.setConstantHeadingInterpolation(Math.toRadians(0));
-
-        chainedHang3rdSpecimen = new PathChain(hang3rdSpecimen1, hang3rdSpecimen2);
-
-
-
-        /*** Hanging 4th Specimen Onto High Bar **/
-        Point collectSpecimenControlPoint3 = new Point(20, 70);
-        Point collectSpecimenControlPoint4 = new Point(45, 30);
-        collect4thSpecimen = new Path(new BezierCurve(new Point(hang3rdSpecimenOntoHighBar2), collectSpecimenControlPoint3, collectSpecimenControlPoint4, new Point(collect4thSpecimenFromWall)));
-        collect4thSpecimen.setConstantHeadingInterpolation(Math.toRadians(0));
-
-
-        Point hangingSpecimenControlPoint5 = new Point(12, 50);
-        hang4thSpecimen1 = new Path(new BezierCurve(new Point(collect4thSpecimenFromWall), hangingSpecimenControlPoint5, new Point(hang4thSpecimenOntoHighBar1)));
-        hang4thSpecimen1.setConstantHeadingInterpolation(Math.toRadians(0));
-
-        hang4thSpecimen2 = new Path(new BezierLine(new Point(hang4thSpecimenOntoHighBar1), new Point(hang4thSpecimenOntoHighBar2)));
-        hang4thSpecimen2.setConstantHeadingInterpolation(Math.toRadians(0));
-
-        chainedHang4thSpecimen = new PathChain(hang4thSpecimen1, hang4thSpecimen2);
-
-
-        /*** Hanging 5th Specimen Onto High Bar **/
-        Point collectSpecimenControlPoint5 = new Point(20, 70);
-        Point collectSpecimenControlPoint6 = new Point(45, 30);
-        collect5thSpecimen = new Path(new BezierCurve(new Point(hang4thSpecimenOntoHighBar2), collectSpecimenControlPoint5, collectSpecimenControlPoint6, new Point(collect5thSpecimenFromWall)));
-        collect5thSpecimen.setConstantHeadingInterpolation(Math.toRadians(0));
-
-        Point hangingSpecimenControlPoint6 = new Point(12, 50);
-        hang5thSpecimen1 = new Path(new BezierCurve(new Point(collect5thSpecimenFromWall), hangingSpecimenControlPoint6, new Point(hang5thSpecimenOntoHighBar1)));
-        hang5thSpecimen1.setConstantHeadingInterpolation(Math.toRadians(0));
-
-        hang5thSpecimen2 = new Path(new BezierLine(new Point(hang5thSpecimenOntoHighBar1), new Point(hang5thSpecimenOntoHighBar2)));
-        hang5thSpecimen2.setConstantHeadingInterpolation(Math.toRadians(0));
-
-        chainedHang5thSpecimen = new PathChain(hang5thSpecimen1, hang5thSpecimen2);
-
-        /*** Parking In Observation Zone **/
-        Point collectSampleControlPoint1 = new Point(20, 70);
-        Point collectSampleControlPoint2 = new Point(45, 30);
-        collectSample = new Path(new BezierCurve(new Point(hang5thSpecimenOntoHighBar2), collectSampleControlPoint1, collectSampleControlPoint2, new Point(collectSampleFromWall)));
-        collectSample.setConstantHeadingInterpolation(Math.toRadians(0));
-        collectSample.setZeroPowerAccelerationMultiplier(6.5);
-        collectSample.setPathEndTimeoutConstraint(0);
-
-        scoreSample = new Path(new BezierLine(new Point(collectSampleFromWall), new Point(scoreSampleIntoHighBasket)));
-        scoreSample.setLinearHeadingInterpolation(Math.toRadians(0), Math.toRadians(-42));
-        scoreSample.setZeroPowerAccelerationMultiplier(6.5);
-        scoreSample.setPathEndTimeoutConstraint(0);
-
+    private Limelight3A limelight;
+
+    // Vision parameters (same as in tele-op)
+    public static double IMAGE_CENTER_X = 320.0;
+    public static double ALIGNMENT_OFFSET = -9.9;
+    public static double FINAL_ALIGNMENT_TOLERANCE = 10;
+    public static int REQUIRED_STABLE_FRAMES = 8;
+    public static double MAX_STRAFE_POWER = 0.45;
+    public static double MIN_STRAFE_POWER = 0.08;
+    public static double STUCK_THRESHOLD = 0.5;
+    public static double STUCK_ERROR_THRESHOLD = 10.0;
+
+    // Vision PID constants
+    public static double kP = 0.00865;
+    public static double kI = 0;
+    public static double kD = 0.00225;
+    public static double kF = 0.1;
+    public static double STUCK_KP_BOOST = 0;
+    public static double STUCK_KF_BOOST = 0;
+    public static double CLOSE_RANGE_THRESHOLD = 0;
+    public static double CLOSE_RANGE_KP = 0;
+
+    // Arm parameters for vision
+    public static double slideExtensionOffsetInches = 6.889764;
+    public static double logCorrectionFactor = 18.25;
+    public static double horizontalSlideTicksPerInch = 59;
+    public static double ROTATION_OFFSET_DEGREES = 64.5;
+    public static int SERVO_ROTATION_DELAY_MS = 500;
+
+    // Vision state variables
+    private PIDController alignmentPID;
+    private double lastCorrectedWorldY = 0;
+    private double smoothedAngle = 0;
+    private double lockedAngle = 0;
+    private double lockedSlideTarget = 0;
+    private double lastError = 0;
+    private double integralSum = 0;
+    private ElapsedTime pidTimer = new ElapsedTime();
+    private ElapsedTime stuckTimer = new ElapsedTime();
+    private boolean isStuck = false;
+    private boolean alignmentFinished = false;
+    private boolean slideTargetLocked = false;
+    private boolean waitingForSlideRetraction = false;
+    private boolean rotationServoPositionLocked = false;
+    private boolean collectionTriggered = false;
+    private boolean servoRotationStarted = false;
+    private long servoRotationStartTime = 0;
+    private int stableFrameCount = 0;
+    private double lastStableX = 0;
+
+    // Starting Position of our robot
+    private final Pose startPose = new Pose(10.5, 112, Math.toRadians(0));
+
+    // Score preload
+    private final Pose scoreSamplePreloadIntoHighBasket = new Pose(13.5, 123.15, Math.toRadians(-42));
+
+    // Collect and score sample spike 1
+    private final Pose collecting1stSampleSpike1 = new Pose(16.5, 124.15, Math.toRadians(-4.5));
+    private final Pose scoring1stSampleIntoHighBasket = new Pose(13.5, 124.15, Math.toRadians(-42));
+
+    // Collect and score sample spike 2
+    private final Pose collecting2ndSampleSpike2 = new Pose(17, 122.5, Math.toRadians(17.5));
+    private final Pose scoring2ndSampleIntoHighBasket = new Pose(17, 122.5, Math.toRadians(-42));
+
+    // Collect and score sample spike 3
+    private final Pose archToCollect3rdSampleSpike3 = new Pose(39, 120, Math.toRadians(90));
+    private final Pose collecting3rdSampleSpike3 = new Pose(39, 134.5, Math.toRadians(90));
+    private final Pose scoring3rdSampleIntoHighBasket = new Pose(17, 122.5, Math.toRadians(-42));
+
+    private Path scoreSamplePreload;
+    private Path collect1stSample;
+    private Path scoring1stSample;
+    private Path collect2ndSample;
+    private Path scoring2ndSample;
+    private Path archToCollect3rdSample;
+    private Path collect3rdSample;
+    private Path scoring3rdSample;
+    private PathChain chained3rdSampleCollect;
+
+    public void buildPaths() {
+        /*** Scoring 1st Sample ***/
+        scoreSamplePreload = new Path(new BezierLine(new Point(startPose), new Point(scoreSamplePreloadIntoHighBasket)));
+        scoreSamplePreload.setLinearHeadingInterpolation(Math.toRadians(0), scoreSamplePreloadIntoHighBasket.getHeading());
+
+        /*** Scoring 2nd Sample (Spike 1) ***/
+        collect1stSample = new Path(new BezierLine(new Point(scoreSamplePreloadIntoHighBasket), new Point(collecting1stSampleSpike1)));
+        collect1stSample.setLinearHeadingInterpolation(scoreSamplePreloadIntoHighBasket.getHeading(), collecting1stSampleSpike1.getHeading());
+        collect1stSample.setZeroPowerAccelerationMultiplier(1);
+        collect1stSample.setPathEndTimeoutConstraint(350);
+
+        scoring1stSample = new Path(new BezierLine(new Point(collecting1stSampleSpike1), new Point(scoring1stSampleIntoHighBasket)));
+        scoring1stSample.setLinearHeadingInterpolation(Math.toRadians(0), scoring1stSampleIntoHighBasket.getHeading());
+
+        /*** Scoring 3rd Sample (Spike 2) ***/
+        collect2ndSample = new Path(new BezierLine(new Point(scoring1stSampleIntoHighBasket), new Point(collecting2ndSampleSpike2)));
+        collect2ndSample.setLinearHeadingInterpolation(scoring1stSampleIntoHighBasket.getHeading(), collecting2ndSampleSpike2.getHeading());
+        collect2ndSample.setZeroPowerAccelerationMultiplier(1);
+        collect2ndSample.setPathEndTimeoutConstraint(300);
+
+        scoring2ndSample = new Path(new BezierLine(new Point(collecting2ndSampleSpike2), new Point(scoring2ndSampleIntoHighBasket)));
+        scoring2ndSample.setLinearHeadingInterpolation(collecting2ndSampleSpike2.getHeading(), scoring2ndSampleIntoHighBasket.getHeading());
+
+        /*** Scoring 4th Sample (Spike 2) ***/
+        collect3rdSample = new Path(new BezierLine(new Point(scoring2ndSampleIntoHighBasket), new Point(collecting3rdSampleSpike3)));
+        collect3rdSample.setLinearHeadingInterpolation(scoring2ndSampleIntoHighBasket.getHeading(), collecting3rdSampleSpike3.getHeading());
+        collect3rdSample.setZeroPowerAccelerationMultiplier(1);
+        collect3rdSample.setPathEndTimeoutConstraint(300);
+
+        scoring3rdSample = new Path(new BezierLine(new Point(collecting3rdSampleSpike3), new Point(scoring3rdSampleIntoHighBasket)));
+        scoring3rdSample.setLinearHeadingInterpolation(collecting3rdSampleSpike3.getHeading(), scoring3rdSampleIntoHighBasket.getHeading());
     }
 
-    public void runOpMode(){
+    public void runOpMode() {
+        buildPaths();
         armSubSystem = new DougieArmSubSystem(hardwareMap);
 
+        // Initialize vision system
+        limelight = hardwareMap.get(Limelight3A.class, "limelight");
+        limelight.setPollRateHz(50);
+        limelight.start();
+
+        alignmentPID = new PIDController(kP, kI, kD);
+        alignmentPID.setTolerance(FINAL_ALIGNMENT_TOLERANCE);
+
+        Constants.setConstants(FConstants.class, LConstants.class);
         follower = new Follower(hardwareMap, FConstants.class, LConstants.class);
         follower.setStartingPose(startPose);
         buildPaths();
@@ -284,94 +165,62 @@ public class Dougie6SampleAuton extends LinearOpMode {
         // Building Autonomous Route
         CommandScheduler.getInstance().schedule(
                 new SequentialCommandGroup(
-
-                        /** Scoring 1st Specimen Preload **/
-                        new InstantCommand(() -> armSubSystem.PositionForSpecimenScoring()),
-                        new WaitCommand(300),
-                        new FollowPath(follower, scorePreload),
-                        new InstantCommand(() -> armSubSystem.ScoreSpecimen()),
-                        new WaitCommand(450),
-
-                        /*
-                        /** Pushing All 3 Samples Into Observation Zone **/
+                        /** Scoring sample preload **/
                         new ParallelCommandGroup(
-                                new InstantCommand(() -> armSubSystem.PositionForSpecimenCollection()),
-                                new FollowPath(follower, chained1stSamplePush)
+                                new InstantCommand(() -> armSubSystem.PositionForHighBucketScoring()),
+                                new InstantCommand(() -> armSubSystem.AutonomousPositionForSampleCollection(1250, 0.24)),
+                                new WaitCommand(700)
                         ),
-                        new FollowPath(follower, chained2ndSamplePush),
-                        new FollowPath(follower, chained3rdSamplePush),
-
-                        /** Collecting + Hanging 2nd Specimen **/
-                        new InstantCommand(() -> armSubSystem.PositionForSpecimenScoring()),
+                        new FollowPath(follower, scoreSamplePreload),
                         new WaitCommand(300),
-                        new FollowPath(follower, chainedHang2ndSpecimen),
+                        new InstantCommand(() -> armSubSystem.ScoreSampleInHighBasket()),
+                        new WaitCommand(500),
 
-                        new InstantCommand(() -> armSubSystem.ScoreSpecimen()),
-                        new WaitCommand(450),
-
-                        /** Collecting + Hanging 3rd Specimen **/
+                        /** Collecting and Scoring spike 1 Sample **/
+                        new ParallelCommandGroup(
+                                new FollowPath(follower, collect1stSample),
+                                new InstantCommand(() -> armSubSystem.AutonomousPositionForSampleCollection(1650, 0.25)),
+                                new WaitCommand(500)
+                        ),
+                        new InstantCommand(() -> armSubSystem.SampleCollectionModeCollectSample()),
+                        new WaitCommand((2500)),
 
                         new ParallelCommandGroup(
-                                new InstantCommand(() -> armSubSystem.PositionForSpecimenCollection()),
-                                new FollowPath(follower, collect3rdSpecimen)
+                                new InstantCommand(() -> armSubSystem.TransferSampleToOuttake()),
+                                new WaitCommand(500),
+                                new FollowPath(follower, scoring1stSample)
                         ),
-                        new InstantCommand(() -> armSubSystem.PositionForSpecimenScoring()),
-                        new WaitCommand(300),
 
-                        new FollowPath(follower, chainedHang3rdSpecimen),
-                        new InstantCommand(() -> armSubSystem.ScoreSpecimen()),
-                        new WaitCommand(450),
-
-
-
-                        /** Collecting + Hanging 4th Specimen **/
-
-                        new ParallelCommandGroup(
-                                new InstantCommand(() -> armSubSystem.PositionForSpecimenCollection()),
-                                new FollowPath(follower, collect4thSpecimen)
-                        ),
-                        new InstantCommand(() -> armSubSystem.PositionForSpecimenScoring()),
-                        new WaitCommand(300),
-
-                        new FollowPath(follower, chainedHang4thSpecimen),
-                        new InstantCommand(() -> armSubSystem.ScoreSpecimen()),
-                        new WaitCommand(450),
-
-
-
-
-                        /** Collecting + Hanging 5th Specimen **/
-
-                        new ParallelCommandGroup(
-                                new InstantCommand(() -> armSubSystem.PositionForSpecimenCollection()),
-                                new FollowPath(follower, collect5thSpecimen)
-                        ),
-                        new InstantCommand(() -> armSubSystem.PositionForSpecimenScoring()),
-                        new WaitCommand(300),
-
-                        new FollowPath(follower, chainedHang5thSpecimen),
-                        new InstantCommand(() -> armSubSystem.ScoreSpecimen()),
-                        new WaitCommand(450)
-
+                        new WaitCommand(200),
+                        new InstantCommand(() -> armSubSystem.ScoreSampleInHighBasket())
 
 
                         /*
-                        /** Collect And Drop Of Sample Into High Basket
-
+                        // After collection, transfer and score
                         new ParallelCommandGroup(
-                                new InstantCommand(() -> armSubSystem.PositionForSpecimenCollection()),
-                                new FollowPath(follower, collectSample)
+                                new InstantCommand(() -> armSubSystem.TransferSampleToOuttake()),
+                                new WaitCommand(2000),
+                                new FollowPath(follower, scoring1stSample),
+                                new WaitCommand(350)
                         ),
-                        new InstantCommand(() -> armSubSystem.PositionForSampleHighBasketScoring()),
-                        new WaitCommand(300),
+                        new ParallelCommandGroup(
+                                new InstantCommand(() -> armSubSystem.ScoreSampleInHighBasket()),
+                                new InstantCommand(() -> armSubSystem.AutonomousPositionForSampleCollection(1000, 0.24))
+                        ),
 
-                        new FollowPath(follower, scoreSample),
+                        /** Collecting and Scoring spike 2nd Sample
+                        new FollowPath(follower, collect2ndSample),
+                        new WaitCommand(250),
+                        new InstantCommand(() -> performVisionAlignmentAndCollection()),
 
-                        new InstantCommand(() -> armSubSystem.DropSampleIntoHighBucket())
+                        // After collection, transfer and score
+                        new ParallelCommandGroup(
+                                new InstantCommand(() -> armSubSystem.TransferSampleToOuttake()),
+                                new WaitCommand(500),
+                                new FollowPath(follower, scoring2ndSample)
+                        )
 
                          */
-
-
                 )
         );
 
@@ -380,12 +229,226 @@ public class Dougie6SampleAuton extends LinearOpMode {
 
         waitForStart();
 
-        while(opModeIsActive()){
+        while(opModeIsActive()) {
             CommandScheduler.getInstance().run();
             follower.update();
 
             armSubSystem.VerticalPIDFSlideControl();
+            armSubSystem.HorizontalPIDFSlideControl();
+            armSubSystem.updateServos();
+        }
+    }
+
+    private void performVisionAlignmentAndCollection() {
+        resetVisionSystem();
+        armSubSystem.PositionForSampleScanning();
+
+        // Vision alignment loop
+        while (opModeIsActive() && !processVisionAndAlignment()) {
+            // Update robot systems while aligning
+            CommandScheduler.getInstance().run();
+            follower.update();
+            armSubSystem.VerticalPIDFSlideControl();
+            armSubSystem.HorizontalPIDFSlideControl();
+            armSubSystem.updateServos();
         }
 
+        // Wait for collection to complete
+        while (opModeIsActive() && !collectionTriggered) {
+            CommandScheduler.getInstance().run();
+            follower.update();
+            armSubSystem.VerticalPIDFSlideControl();
+            armSubSystem.HorizontalPIDFSlideControl();
+            armSubSystem.updateServos();
+        }
+    }
+
+    private void resetVisionSystem() {
+        alignmentFinished = false;
+        slideTargetLocked = false;
+        waitingForSlideRetraction = true;
+        rotationServoPositionLocked = false;
+        collectionTriggered = false;
+        servoRotationStarted = false;
+        stableFrameCount = 0;
+        isStuck = false;
+        armSubSystem.horizontalSlideTargetPosition = 0;
+        armSubSystem.LimeLightIntakeIdlePosition();
+        armSubSystem.PositionForSampleScanning();
+        integralSum = 0;
+        stuckTimer.reset();
+        pidTimer.reset();
+    }
+
+    private boolean processVisionAndAlignment() {
+        if (waitingForSlideRetraction) {
+            if (Math.abs(armSubSystem.currentHorizontalSlidePosition) <= 50) {
+                waitingForSlideRetraction = false;
+            }
+            return false;
+        }
+
+        LLResult result = limelight.getLatestResult();
+        if (result == null || result.getPythonOutput() == null || result.getPythonOutput().length < 7) {
+            telemetry.addLine("No target detected");
+            stableFrameCount = 0;
+            isStuck = false;
+            applyMotorPowers(0, 0);
+            return false;
+        }
+
+        double[] output = result.getPythonOutput();
+        boolean locked = output[0] == 1.0 || output[1] == 1.0 || output[2] == 1.0;
+        if (!locked) {
+            telemetry.addLine("No block locked");
+            stableFrameCount = 0;
+            isStuck = false;
+            applyMotorPowers(0, 0);
+            return false;
+        }
+
+        double angle = output[3];
+        double centerX = output[4];
+        double worldY = output[6];
+        double targetX = IMAGE_CENTER_X + ALIGNMENT_OFFSET;
+        double error = centerX - targetX;
+
+        // Calculate time step for derivative and integral terms
+        double dt = pidTimer.seconds();
+        pidTimer.reset();
+
+        // Check if we're stuck
+        if (Math.abs(error) > STUCK_ERROR_THRESHOLD && !isStuck) {
+            if (stuckTimer.seconds() > STUCK_THRESHOLD) {
+                isStuck = true;
+                stuckTimer.reset();
+            }
+        } else {
+            stuckTimer.reset();
+            isStuck = false;
+        }
+
+        // Dynamic PID adjustment
+        double currentKP = (Math.abs(error) < CLOSE_RANGE_THRESHOLD) ? CLOSE_RANGE_KP : kP;
+        double currentKF = kF;
+
+        // Boost PID when stuck
+        if (isStuck) {
+            currentKP += STUCK_KP_BOOST;
+            currentKF += STUCK_KF_BOOST;
+        }
+
+        // Calculate PID terms
+        double proportional = currentKP * error;
+        double integral = kI * integralSum;
+        double derivative = kD * ((error - lastError) / dt);
+        lastError = error;
+
+        // Calculate PID output
+        double pidOutput = (proportional + integral + derivative);
+        double feedforward = Math.signum(error) * currentKF;
+        double strafePower = pidOutput + feedforward;
+
+        // Ensure minimum power to overcome static friction
+        if (Math.abs(strafePower) > 0 && Math.abs(strafePower) < MIN_STRAFE_POWER) {
+            strafePower = Math.copySign(MIN_STRAFE_POWER, strafePower);
+        }
+
+        // Limit maximum power
+        strafePower = Math.max(-MAX_STRAFE_POWER, Math.min(MAX_STRAFE_POWER, strafePower));
+
+        // Check for stable alignment
+        if (Math.abs(error) <= FINAL_ALIGNMENT_TOLERANCE) {
+            if (stableFrameCount == 0 || Math.abs(centerX - lastStableX) < 2.0) {
+                stableFrameCount++;
+                lastStableX = centerX;
+            } else {
+                stableFrameCount = 0;
+            }
+        } else {
+            stableFrameCount = 0;
+        }
+
+        if (!alignmentFinished && stableFrameCount >= REQUIRED_STABLE_FRAMES) {
+            alignmentFinished = true;
+            isStuck = false;
+        }
+
+        // Smooth angle measurement
+        smoothedAngle = 0.8 * smoothedAngle + 0.2 * angle;
+
+        handleServoRotation();
+        handleSlideExtension(worldY);
+        handleCollectionSequence();
+
+        applyMotorPowers(alignmentFinished ? 0 : strafePower, 0);
+
+        telemetry.addData("Vision Alignment", alignmentFinished ? "ALIGNED" : "ALIGNING");
+        telemetry.addData("Error", error);
+        telemetry.addData("Stable Frames", stableFrameCount);
+        telemetry.update();
+
+        return collectionTriggered;
+    }
+
+    private void handleServoRotation() {
+        if (!servoRotationStarted && stableFrameCount >= 3) {
+            lockedAngle = ((smoothedAngle % 360) + 360) % 360;
+            if (lockedAngle > 180) lockedAngle = 360 - lockedAngle;
+
+            double finalAngle = lockedAngle + ROTATION_OFFSET_DEGREES;
+            finalAngle = Math.max(0.0, Math.min(180.0, finalAngle));
+            double mappedServoPosition = finalAngle / 180.0;
+            armSubSystem.horizontalRotationServo.setTargetPosition(mappedServoPosition);
+
+            servoRotationStarted = true;
+            servoRotationStartTime = System.currentTimeMillis();
+            rotationServoPositionLocked = true;
+        }
+    }
+
+    private void handleSlideExtension(double worldY) {
+        if (alignmentFinished && rotationServoPositionLocked && !slideTargetLocked && worldY > 0) {
+            double correctedWorldY = worldY + (0.015 * Math.pow(worldY, 2)) - 0.75;
+            correctedWorldY = 0.8 * correctedWorldY + 0.2 * lastCorrectedWorldY;
+            lastCorrectedWorldY = correctedWorldY;
+
+            double logCorrection = logCorrectionFactor * Math.log10(correctedWorldY);
+            double scaledY = correctedWorldY + slideExtensionOffsetInches - logCorrection;
+            lockedSlideTarget = scaledY * horizontalSlideTicksPerInch;
+            armSubSystem.horizontalSlideTargetPosition = lockedSlideTarget;
+
+            slideTargetLocked = true;
+        }
+    }
+
+    private void handleCollectionSequence() {
+        if (alignmentFinished && rotationServoPositionLocked && slideTargetLocked && !collectionTriggered) {
+            long timeSinceServoRotation = System.currentTimeMillis() - servoRotationStartTime;
+            if (timeSinceServoRotation >= SERVO_ROTATION_DELAY_MS) {
+                armSubSystem.LimelightPositionForSampleCollection();
+                sleep(300);
+                armSubSystem.LimelightCollectSample();
+                collectionTriggered = true;
+            }
+        }
+    }
+
+    private void applyMotorPowers(double strafe, double headingCorrection) {
+        double fl = strafe + headingCorrection;
+        double fr = -strafe - headingCorrection;
+        double bl = -strafe + headingCorrection;
+        double br = strafe - headingCorrection;
+
+        double max = Math.max(1.0, Math.max(Math.abs(fl),
+                Math.max(Math.abs(fr), Math.max(Math.abs(bl), Math.abs(br)))));
+
+        /*
+        follower.getFrontLeftMotor().setPower(fl / max);
+        follower.getFrontRightMotor().setPower(fr / max);
+        follower.getBackLeftMotor().setPower(bl / max);
+        follower.getBackRightMotor().setPower(br / max);
+
+         */
     }
 }
