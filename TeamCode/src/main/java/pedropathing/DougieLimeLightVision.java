@@ -10,8 +10,6 @@ import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.IMU;
 import com.qualcomm.robotcore.hardware.Servo;
-import com.qualcomm.robotcore.util.ElapsedTime;
-
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
 
 @Config
@@ -25,96 +23,53 @@ public class DougieLimeLightVision extends LinearOpMode {
 
     DougieArmSubSystem armSubSystem;
 
-    // Vision parameters
     public static double IMAGE_CENTER_X = 320.0;
-    public static double ALIGNMENT_OFFSET = -2.5;
+    public static double ALIGNMENT_OFFSET = -20;
+    public static double MAX_STRAFE_POWER = 0.185;
+    public static double MIN_EFFECTIVE_STRAFE_POWER = 0.16;
     public static double FINAL_ALIGNMENT_TOLERANCE = 3;
-    public static int REQUIRED_STABLE_FRAMES = 3;
-    public static double MAX_STRAFE_POWER = 0.45;
-    public static double MIN_STRAFE_POWER = 0.3;
-    public static double STUCK_THRESHOLD = 0;
-    public static double STUCK_ERROR_THRESHOLD = 0;
+    public static int REQUIRED_STABLE_FRAMES = 7;
 
-    // PID constants with feedforward
-    public static double kP = 0.005;
-    public static double kI = 0;
+    public static double kP = 0.0065;
+    public static double kI = 0.000465;
     public static double kD = 0.0002;
-    public static double kF = 0.1;
-    public static double STUCK_KP_BOOST = 0;
-    public static double STUCK_KF_BOOST = 0;
+    public static double kF = 0.0055;
 
-    // Dynamic PID scaling
-    public static double CLOSE_RANGE_THRESHOLD = 0;
-    public static double CLOSE_RANGE_KP = 0;
-
-    // Heading control
     public static double headingKp = 3;
     public static double headingKi = 0;
     public static double headingKd = 0.275;
-    public static double headingKf = 0.05;
 
-    // Arm parameters
     public static double slideExtensionOffsetInches = 6.889764;
-    public static double logCorrectionFactor = 18.25;
-    public static double horizontalSlideTicksPerInch = 59;
-    public static double ROTATION_OFFSET_DEGREES = 66;
-    public static int SERVO_ROTATION_DELAY_MS = 500;
+    public static double logCorrectionFactor = 18.05;
+    public static double horizontalSlideTicksPerInch = 58.65;
 
-    // Controllers
+    public static double ROTATION_OFFSET_DEGREES = 66;
+    public static int SERVO_ROTATION_DELAY_MS = 1000; // New: Delay after servo rotation before collection
+
     private PIDController alignmentPID;
     private PIDController headingLockPID;
 
-    // State variables
     private double targetHeading = 0;
     private double lastCorrectedWorldY = 0;
     private double smoothedAngle = 0;
     private double lockedAngle = 0;
     private double lockedSlideTarget = 0;
-    private double lastError = 0;
-    private double lastHeadingCorrection = 0;
-    private double integralSum = 0;
-    private ElapsedTime pidTimer = new ElapsedTime();
-    private ElapsedTime stuckTimer = new ElapsedTime();
-    private boolean isStuck = false;
+    private double lastRotationOffsetApplied = Double.NaN;
 
-    // Status flags
     private boolean alignmentFinished = false;
     private boolean slideTargetLocked = false;
     private boolean trianglePressedLastLoop = false;
     private boolean waitingForSlideRetraction = false;
     private boolean rotationServoPositionLocked = false;
     private boolean collectionTriggered = false;
-    private boolean servoRotationStarted = false;
-    private long servoRotationStartTime = 0;
+    private boolean servoRotationStarted = false; // New: Track if servo rotation has started
+    private long servoRotationStartTime = 0; // New: Track when servo rotation started
 
-    // Alignment tracking
     private int stableFrameCount = 0;
     private double lastStableX = 0;
 
     @Override
     public void runOpMode() {
-        initializeHardware();
-        telemetry.addLine("Ready to align...");
-        telemetry.update();
-        waitForStart();
-
-        targetHeading = imu.getRobotYawPitchRollAngles().getYaw(AngleUnit.RADIANS);
-        pidTimer.reset();
-        stuckTimer.reset();
-
-        while (opModeIsActive()) {
-            handleResetSequence();
-            handleArmControl();
-
-            if (!processVisionAndAlignment()) {
-                continue;
-            }
-
-            updateTelemetry();
-        }
-    }
-
-    private void initializeHardware() {
         rotationServo = hardwareMap.get(Servo.class, "horizontalGripperRotation");
         rotationServo.setDirection(Servo.Direction.REVERSE);
 
@@ -134,194 +89,170 @@ public class DougieLimeLightVision extends LinearOpMode {
         limelight.start();
 
         alignmentPID = new PIDController(kP, kI, kD);
-        alignmentPID.setTolerance(FINAL_ALIGNMENT_TOLERANCE);
-
         headingLockPID = new PIDController(headingKp, headingKi, headingKd);
-        headingLockPID.setTolerance(Math.toRadians(1.5));
-
         armSubSystem = new DougieArmSubSystem(hardwareMap);
-    }
 
-    private void handleResetSequence() {
-        boolean trianglePressed = gamepad1.y;
-        if (trianglePressed && !trianglePressedLastLoop) {
-            alignmentFinished = false;
-            slideTargetLocked = false;
-            waitingForSlideRetraction = true;
-            rotationServoPositionLocked = false;
-            collectionTriggered = false;
-            servoRotationStarted = false;
-            stableFrameCount = 0;
-            isStuck = false;
-            armSubSystem.horizontalSlideTargetPosition = 0;
-            armSubSystem.LimeLightIntakeIdlePosition();
-            armSubSystem.PositionForSampleScanning();
-            integralSum = 0;
-            stuckTimer.reset();
-        }
-        trianglePressedLastLoop = trianglePressed;
-    }
+        telemetry.addLine("Ready to align...");
+        telemetry.update();
+        waitForStart();
 
-    private void handleArmControl() {
-        armSubSystem.VerticalPIDFSlideControl();
-        armSubSystem.HorizontalPIDFSlideControl();
-        armSubSystem.updateServos();
-        CommandScheduler.getInstance().run();
+        targetHeading = imu.getRobotYawPitchRollAngles().getYaw(AngleUnit.RADIANS);
 
-        if (waitingForSlideRetraction && Math.abs(armSubSystem.currentHorizontalSlidePosition) <= 50) {
-            waitingForSlideRetraction = false;
-        }
+        while (opModeIsActive()) {
+            boolean trianglePressed = gamepad1.y;
 
-        if (waitingForSlideRetraction) {
-            telemetry.addLine("Waiting for slide to retract...");
-            applyMotorPowers(0, getHeadingCorrection());
-            telemetry.update();
-        }
-    }
-
-    private boolean processVisionAndAlignment() {
-        if (waitingForSlideRetraction) {
-            return false;
-        }
-
-        LLResult result = limelight.getLatestResult();
-        if (result == null || result.getPythonOutput() == null || result.getPythonOutput().length < 7) {
-            telemetry.addLine("No target detected");
-            stableFrameCount = 0;
-            isStuck = false;
-            applyMotorPowers(0, getHeadingCorrection());
-            return false;
-        }
-
-        double[] output = result.getPythonOutput();
-        boolean locked = output[0] == 1.0 || output[1] == 1.0 || output[2] == 1.0;
-        if (!locked) {
-            telemetry.addLine("No block locked");
-            stableFrameCount = 0;
-            isStuck = false;
-            applyMotorPowers(0, getHeadingCorrection());
-            return false;
-        }
-
-        double angle = output[3];
-        double centerX = output[4];
-        double worldY = output[6];
-        double targetX = IMAGE_CENTER_X + ALIGNMENT_OFFSET;
-        double error = centerX - targetX;
-
-        double dt = pidTimer.seconds();
-        pidTimer.reset();
-
-        if (Math.abs(error) > STUCK_ERROR_THRESHOLD && !isStuck) {
-            if (stuckTimer.seconds() > STUCK_THRESHOLD) {
-                isStuck = true;
-                stuckTimer.reset();
+            if (trianglePressed && !trianglePressedLastLoop) {
+                alignmentFinished = false;
+                slideTargetLocked = false;
+                waitingForSlideRetraction = true;
+                rotationServoPositionLocked = false;
+                collectionTriggered = false;
+                servoRotationStarted = false;
+                stableFrameCount = 0;
+                armSubSystem.horizontalSlideTargetPosition = 0;
+                armSubSystem.LimeLightIntakeIdlePosition();
+                armSubSystem.PositionForSampleScanning();
             }
-        } else {
-            stuckTimer.reset();
-            isStuck = false;
-        }
+            trianglePressedLastLoop = trianglePressed;
 
-        // Dynamic PID adjustment
-        double currentKP = (Math.abs(error) < CLOSE_RANGE_THRESHOLD) ? CLOSE_RANGE_KP : kP;
-        double currentKF = kF;
+            armSubSystem.VerticalPIDFSlideControl();
+            armSubSystem.HorizontalPIDFSlideControl();
+            armSubSystem.updateServos();
+            CommandScheduler.getInstance().run();
 
-        if (isStuck) {
-            currentKP += STUCK_KP_BOOST;
-            currentKF += STUCK_KF_BOOST;
-        }
+            if (waitingForSlideRetraction && Math.abs(armSubSystem.currentHorizontalSlidePosition) <= 50) {
+                waitingForSlideRetraction = false;
+            }
 
-        double proportional = currentKP * error;
+            if (waitingForSlideRetraction) {
+                telemetry.addLine("Waiting for slide to retract...");
+                applyMotorPowers(0, getHeadingCorrection());
+                telemetry.update();
+                continue;
+            }
 
-        if (Math.abs(error) > FINAL_ALIGNMENT_TOLERANCE * 2) {
-            integralSum += error * dt;
-        } else {
-            integralSum = 0;
-        }
-        double integral = kI * integralSum;
+            LLResult result = limelight.getLatestResult();
+            if (result == null || result.getPythonOutput() == null || result.getPythonOutput().length < 7) {
+                telemetry.addLine("No target detected");
+                stableFrameCount = 0;
+                applyMotorPowers(0, getHeadingCorrection());
+                telemetry.update();
+                continue;
+            }
 
-        double derivative = kD * ((error - lastError) / dt);
-        lastError = error;
+            double[] output = result.getPythonOutput();
+            boolean locked = output[0] == 1.0 || output[1] == 1.0 || output[2] == 1.0;
+            if (!locked) {
+                telemetry.addLine("No block locked");
+                stableFrameCount = 0;
+                applyMotorPowers(0, getHeadingCorrection());
+                telemetry.update();
+                continue;
+            }
 
-        double pidOutput = (proportional + integral + derivative);
+            double angle = output[3];
+            double centerX = output[4];
+            double worldY = output[6];
+            double targetX = IMAGE_CENTER_X + ALIGNMENT_OFFSET;
+            double error = centerX - targetX;
 
-        double feedforward = Math.signum(error) * currentKF;
-        double strafePower = pidOutput + feedforward;
+            alignmentPID.setPID(kP, kI, kD);
+            double pidOutput = -alignmentPID.calculate(centerX, targetX);
+            double ff = Math.signum(error) * kF;
+            double strafePower = pidOutput + ff;
 
-        if (Math.abs(strafePower) > 0 && Math.abs(strafePower) < MIN_STRAFE_POWER) {
-            strafePower = Math.copySign(MIN_STRAFE_POWER, strafePower);
-        }
+            if (Math.abs(strafePower) < MIN_EFFECTIVE_STRAFE_POWER && Math.abs(error) > FINAL_ALIGNMENT_TOLERANCE) {
+                strafePower = Math.copySign(MIN_EFFECTIVE_STRAFE_POWER, strafePower);
+            }
+            strafePower = Math.max(-MAX_STRAFE_POWER, Math.min(MAX_STRAFE_POWER, strafePower));
 
-        strafePower = Math.max(-MAX_STRAFE_POWER, Math.min(MAX_STRAFE_POWER, strafePower));
-
-
-        if (Math.abs(error) <= FINAL_ALIGNMENT_TOLERANCE) {
-            if (stableFrameCount == 0 || Math.abs(centerX - lastStableX) < 2.0) {
-                stableFrameCount++;
-                lastStableX = centerX;
+            // Check for stable alignment
+            if (Math.abs(error) <= FINAL_ALIGNMENT_TOLERANCE) {
+                if (stableFrameCount == 0 || Math.abs(centerX - lastStableX) < 2.0) {
+                    stableFrameCount++;
+                    lastStableX = centerX;
+                } else {
+                    stableFrameCount = 0;
+                }
             } else {
                 stableFrameCount = 0;
             }
-        } else {
-            stableFrameCount = 0;
-        }
 
-        if (!alignmentFinished && stableFrameCount >= REQUIRED_STABLE_FRAMES) {
-            alignmentFinished = true;
-            isStuck = false;
-        }
-
-        // Smooth angle measurement
-        smoothedAngle = 0.8 * smoothedAngle + 0.2 * angle;
-
-        handleServoRotation();
-        handleSlideExtension(worldY);
-        handleCollectionSequence();
-
-        applyMotorPowers(alignmentFinished ? 0 : strafePower, getHeadingCorrection());
-        return true;
-    }
-
-    private void handleServoRotation() {
-        if (!servoRotationStarted && stableFrameCount >= 3) {
-            lockedAngle = ((smoothedAngle % 360) + 360) % 360;
-            if (lockedAngle > 180) lockedAngle = 360 - lockedAngle;
-
-            double finalAngle = lockedAngle + ROTATION_OFFSET_DEGREES;
-            finalAngle = Math.max(0.0, Math.min(180.0, finalAngle));
-            double mappedServoPosition = finalAngle / 180.0;
-            armSubSystem.horizontalRotationServo.setTargetPosition(mappedServoPosition);
-
-            servoRotationStarted = true;
-            servoRotationStartTime = System.currentTimeMillis();
-            rotationServoPositionLocked = true;
-        }
-    }
-
-    private void handleSlideExtension(double worldY) {
-        if (alignmentFinished && rotationServoPositionLocked && !slideTargetLocked && worldY > 0) {
-            double correctedWorldY = worldY + (0.015 * Math.pow(worldY, 2)) - 0.75;
-            correctedWorldY = 0.8 * correctedWorldY + 0.2 * lastCorrectedWorldY;
-            lastCorrectedWorldY = correctedWorldY;
-
-            double logCorrection = logCorrectionFactor * Math.log10(correctedWorldY);
-            double scaledY = correctedWorldY + slideExtensionOffsetInches - logCorrection;
-            lockedSlideTarget = scaledY * horizontalSlideTicksPerInch;
-            armSubSystem.horizontalSlideTargetPosition = lockedSlideTarget;
-
-            slideTargetLocked = true;
-        }
-    }
-
-    private void handleCollectionSequence() {
-        if (alignmentFinished && rotationServoPositionLocked && slideTargetLocked && !collectionTriggered) {
-            long timeSinceServoRotation = System.currentTimeMillis() - servoRotationStartTime;
-            if (timeSinceServoRotation >= SERVO_ROTATION_DELAY_MS) {
-                armSubSystem.LimelightPositionForSampleCollection();
-                sleep(300);
-                armSubSystem.LimelightCollectSample();
-                collectionTriggered = true;
+            if (!alignmentFinished && stableFrameCount >= REQUIRED_STABLE_FRAMES) {
+                alignmentFinished = true;
             }
+
+            smoothedAngle = 0.8 * smoothedAngle + 0.2 * angle;
+
+            // Start servo rotation as soon as we have a stable angle, even before full alignment
+            if (!servoRotationStarted && stableFrameCount >= 3) { // Changed: Start rotation earlier
+                lockedAngle = ((smoothedAngle % 360) + 360) % 360;
+                if (lockedAngle > 180) lockedAngle = 360 - lockedAngle;
+
+                double finalAngle = lockedAngle + ROTATION_OFFSET_DEGREES;
+                finalAngle = Math.max(0.0, Math.min(180.0, finalAngle));
+                double mappedServoPosition = finalAngle / 180.0;
+                armSubSystem.horizontalRotationServo.setTargetPosition(mappedServoPosition);
+
+                lastRotationOffsetApplied = ROTATION_OFFSET_DEGREES;
+                servoRotationStarted = true;
+                servoRotationStartTime = System.currentTimeMillis();
+                rotationServoPositionLocked = true;
+            }
+
+            if (rotationServoPositionLocked && ROTATION_OFFSET_DEGREES != lastRotationOffsetApplied) {
+                double finalAngle = lockedAngle + ROTATION_OFFSET_DEGREES;
+                finalAngle = Math.max(0.0, Math.min(180.0, finalAngle));
+                double mappedServoPosition = finalAngle / 180.0;
+                armSubSystem.horizontalRotationServo.setTargetPosition(mappedServoPosition);
+
+                lastRotationOffsetApplied = ROTATION_OFFSET_DEGREES;
+            }
+
+            if (alignmentFinished && rotationServoPositionLocked && !slideTargetLocked && worldY > 0) {
+                double correctedWorldY = worldY + (0.015 * Math.pow(worldY, 2)) - 0.75;
+                correctedWorldY = 0.8 * correctedWorldY + 0.2 * lastCorrectedWorldY;
+                lastCorrectedWorldY = correctedWorldY;
+
+                double logCorrection = logCorrectionFactor * Math.log10(correctedWorldY);
+                double scaledY = correctedWorldY + slideExtensionOffsetInches - logCorrection;
+                lockedSlideTarget = scaledY * horizontalSlideTicksPerInch;
+                armSubSystem.horizontalSlideTargetPosition = lockedSlideTarget;
+
+                slideTargetLocked = true;
+            }
+
+            // Only proceed with collection if:
+            // 1. We're aligned
+            // 2. Slide is at target
+            // 3. Servo has had time to rotate (500ms)
+            if (alignmentFinished && rotationServoPositionLocked && slideTargetLocked && !collectionTriggered) {
+                long timeSinceServoRotation = System.currentTimeMillis() - servoRotationStartTime;
+                if (timeSinceServoRotation >= SERVO_ROTATION_DELAY_MS) {
+                    armSubSystem.LimelightPositionForSampleCollection();
+                    sleep(300);
+                    armSubSystem.LimelightCollectSample();
+                    collectionTriggered = true;
+                }
+            }
+
+            applyMotorPowers(alignmentFinished ? 0 : strafePower, getHeadingCorrection());
+
+            telemetry.addData("centerX", centerX);
+            telemetry.addData("targetX", targetX);
+            telemetry.addData("error", error);
+            telemetry.addData("StrafePower", strafePower);
+            telemetry.addData("HeadingCorrection", getHeadingCorrection());
+            telemetry.addData("LockedSlideTarget", lockedSlideTarget);
+            telemetry.addData("SmoothedAngle", smoothedAngle);
+            telemetry.addData("LockedAngle", lockedAngle);
+            telemetry.addData("OffsetAngle", ROTATION_OFFSET_DEGREES);
+            telemetry.addData("FinalAngle", lockedAngle + ROTATION_OFFSET_DEGREES);
+            telemetry.addData("ServoTargetPos", (lockedAngle + ROTATION_OFFSET_DEGREES) / 180.0);
+            telemetry.addData("StableFrameCount", stableFrameCount);
+            telemetry.addData("CollectionTriggered", collectionTriggered);
+            telemetry.addData("TimeSinceServoRotation", System.currentTimeMillis() - servoRotationStartTime);
+            telemetry.update();
         }
     }
 
@@ -333,7 +264,6 @@ public class DougieLimeLightVision extends LinearOpMode {
 
         double max = Math.max(1.0, Math.max(Math.abs(fl),
                 Math.max(Math.abs(fr), Math.max(Math.abs(bl), Math.abs(br)))));
-
         frontLeft.setPower(fl / max);
         frontRight.setPower(fr / max);
         backLeft.setPower(bl / max);
@@ -344,23 +274,7 @@ public class DougieLimeLightVision extends LinearOpMode {
         double currentHeading = imu.getRobotYawPitchRollAngles().getYaw(AngleUnit.RADIANS);
         double headingError = targetHeading - currentHeading;
         headingError = Math.IEEEremainder(headingError, 2 * Math.PI);
-
-        if (Math.abs(headingError) < Math.toRadians(1.5)) {
-            return 0;
-        }
-
-        double correction = headingLockPID.calculate(headingError);
-        double feedforward = Math.signum(headingError) * headingKf;
-        return correction + feedforward;
-    }
-
-    private void updateTelemetry() {
-        telemetry.addData("Alignment Status", alignmentFinished ? "ALIGNED" : "ALIGNING");
-        telemetry.addData("Error", lastError);
-        telemetry.addData("Stable Frames", stableFrameCount);
-        telemetry.addData("Heading Correction", getHeadingCorrection());
-        telemetry.addData("Servo Angle", lockedAngle + ROTATION_OFFSET_DEGREES);
-        telemetry.addData("Stuck Detection", isStuck ? "STUCK - BOOSTING" : "OK");
-        telemetry.update();
+        if (Math.abs(headingError) < Math.toRadians(1.5)) return 0;
+        return headingLockPID.calculate(headingError);
     }
 }

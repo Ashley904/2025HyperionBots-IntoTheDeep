@@ -144,13 +144,6 @@ public class DougieTeleOp extends LinearOpMode {
 
         releaseTimer = new ElapsedTime();
 
-        // Init position for the INTAKE + OUTTAKE for when the init button is pressed
-        armSubSystem.IntakeInitIdlePosition();
-        armSubSystem.OuttakeInitIdlePosition();
-
-        CommandScheduler.getInstance().run();
-        armSubSystem.updateServos();
-
         telemetry.addData("Status: ", "Ready to start");
         telemetry.update();
 
