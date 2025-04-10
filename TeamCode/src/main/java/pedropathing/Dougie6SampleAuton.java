@@ -87,30 +87,32 @@ public class Dougie6SampleAuton extends LinearOpMode {
     private final Pose startPose = new Pose(10.5, 112, Math.toRadians(0));
 
     // Score preload
-    private final Pose scoreSamplePreloadIntoHighBasket = new Pose(13.5, 123.15, Math.toRadians(-42));
+    private final Pose scoreSamplePreloadIntoHighBasket = new Pose(15.15, 123.15, Math.toRadians(-42));
 
     // Collect and score sample spike 1
-    private final Pose collecting1stSampleSpike1 = new Pose(16.5, 124.15, Math.toRadians(-4.5));
-    private final Pose scoring1stSampleIntoHighBasket = new Pose(13.5, 124.15, Math.toRadians(-42));
+    private final Pose collecting1stSampleSpike1 = new Pose(18, 125, Math.toRadians(-4.5));
+    private final Pose scoring1stSampleIntoHighBasket = new Pose(16.5, 126.1, Math.toRadians(-42));
 
     // Collect and score sample spike 2
-    private final Pose collecting2ndSampleSpike2 = new Pose(17, 122.5, Math.toRadians(17.5));
-    private final Pose scoring2ndSampleIntoHighBasket = new Pose(17, 122.5, Math.toRadians(-42));
+    private final Pose collecting2ndSampleSpike2 = new Pose(18, 126.25, Math.toRadians(14));
+    private final Pose scoring2ndSampleIntoHighBasket = new Pose(16.5, 126.1, Math.toRadians(-42));
 
     // Collect and score sample spike 3
-    private final Pose archToCollect3rdSampleSpike3 = new Pose(39, 120, Math.toRadians(90));
-    private final Pose collecting3rdSampleSpike3 = new Pose(39, 134.5, Math.toRadians(90));
-    private final Pose scoring3rdSampleIntoHighBasket = new Pose(17, 122.5, Math.toRadians(-42));
+    private final Pose collecting3rdSampleSpike3 = new Pose(20, 133, Math.toRadians(27));
+    private final Pose scoring3rdSampleIntoHighBasket = new Pose(16.5, 126.1, Math.toRadians(-42));
 
     private Path scoreSamplePreload;
     private Path collect1stSample;
+    private PathChain collect1stSampleChain;
     private Path scoring1stSample;
+
     private Path collect2ndSample;
+    private PathChain collect2ndSampleChain;
     private Path scoring2ndSample;
-    private Path archToCollect3rdSample;
+
     private Path collect3rdSample;
+    private PathChain collect3rdSampleChain;
     private Path scoring3rdSample;
-    private PathChain chained3rdSampleCollect;
 
     public void buildPaths() {
         /*** Scoring 1st Sample ***/
@@ -123,8 +125,11 @@ public class Dougie6SampleAuton extends LinearOpMode {
         collect1stSample.setZeroPowerAccelerationMultiplier(1);
         collect1stSample.setPathEndTimeoutConstraint(350);
 
+        collect1stSampleChain = new PathChain(collect1stSample);
+
         scoring1stSample = new Path(new BezierLine(new Point(collecting1stSampleSpike1), new Point(scoring1stSampleIntoHighBasket)));
         scoring1stSample.setLinearHeadingInterpolation(Math.toRadians(0), scoring1stSampleIntoHighBasket.getHeading());
+        scoring1stSample.setZeroPowerAccelerationMultiplier(1);
 
         /*** Scoring 3rd Sample (Spike 2) ***/
         collect2ndSample = new Path(new BezierLine(new Point(scoring1stSampleIntoHighBasket), new Point(collecting2ndSampleSpike2)));
@@ -132,14 +137,18 @@ public class Dougie6SampleAuton extends LinearOpMode {
         collect2ndSample.setZeroPowerAccelerationMultiplier(1);
         collect2ndSample.setPathEndTimeoutConstraint(300);
 
+        collect2ndSampleChain = new PathChain(collect2ndSample);
+
         scoring2ndSample = new Path(new BezierLine(new Point(collecting2ndSampleSpike2), new Point(scoring2ndSampleIntoHighBasket)));
         scoring2ndSample.setLinearHeadingInterpolation(collecting2ndSampleSpike2.getHeading(), scoring2ndSampleIntoHighBasket.getHeading());
 
         /*** Scoring 4th Sample (Spike 2) ***/
         collect3rdSample = new Path(new BezierLine(new Point(scoring2ndSampleIntoHighBasket), new Point(collecting3rdSampleSpike3)));
         collect3rdSample.setLinearHeadingInterpolation(scoring2ndSampleIntoHighBasket.getHeading(), collecting3rdSampleSpike3.getHeading());
-        collect3rdSample.setZeroPowerAccelerationMultiplier(1);
+        collect3rdSample.setZeroPowerAccelerationMultiplier(0.25);
         collect3rdSample.setPathEndTimeoutConstraint(300);
+
+        collect3rdSampleChain = new PathChain(collect3rdSample);
 
         scoring3rdSample = new Path(new BezierLine(new Point(collecting3rdSampleSpike3), new Point(scoring3rdSampleIntoHighBasket)));
         scoring3rdSample.setLinearHeadingInterpolation(collecting3rdSampleSpike3.getHeading(), scoring3rdSampleIntoHighBasket.getHeading());
@@ -166,61 +175,63 @@ public class Dougie6SampleAuton extends LinearOpMode {
         CommandScheduler.getInstance().schedule(
                 new SequentialCommandGroup(
                         /** Scoring sample preload **/
+                        new InstantCommand(() -> armSubSystem.PositionForHighBucketScoring()),
+                        new WaitCommand(100),
+
                         new ParallelCommandGroup(
-                                new InstantCommand(() -> armSubSystem.PositionForHighBucketScoring()),
-                                new InstantCommand(() -> armSubSystem.AutonomousPositionForSampleCollection(1250, 0.24)),
-                                new WaitCommand(700)
+                                new InstantCommand(() -> armSubSystem.AutonomousPositionForSampleCollection(985, 0.24)),
+                                new WaitCommand(1250)
                         ),
                         new FollowPath(follower, scoreSamplePreload),
                         new WaitCommand(300),
                         new InstantCommand(() -> armSubSystem.ScoreSampleInHighBasket()),
-                        new WaitCommand(500),
+                        new WaitCommand(350),
 
                         /** Collecting and Scoring spike 1 Sample **/
                         new ParallelCommandGroup(
-                                new FollowPath(follower, collect1stSample),
-                                new InstantCommand(() -> armSubSystem.AutonomousPositionForSampleCollection(1650, 0.25)),
-                                new WaitCommand(500)
+                                new FollowPath(follower, collect1stSampleChain, true),
+                                new InstantCommand(() -> armSubSystem.AutonomousPositionForSampleCollection(1560, 0.25)),
+                                new WaitCommand(900)
                         ),
                         new InstantCommand(() -> armSubSystem.SampleCollectionModeCollectSample()),
                         new WaitCommand((2500)),
+                        new InstantCommand(() -> armSubSystem.TransferSampleToOuttake()),
+                        new WaitCommand(1500),
+                        new FollowPath(follower, scoring1stSample),
 
+                        new WaitCommand(400),
+                        new InstantCommand(() -> armSubSystem.ScoreSampleInHighBasket()),
+
+
+                        /** Collecting and Scoring spike 2 Sample **/
                         new ParallelCommandGroup(
-                                new InstantCommand(() -> armSubSystem.TransferSampleToOuttake()),
-                                new WaitCommand(500),
-                                new FollowPath(follower, scoring1stSample)
+                                new FollowPath(follower, collect2ndSampleChain, true),
+                                new InstantCommand(() -> armSubSystem.AutonomousPositionForSampleCollection(1350, 0.25)),
+                                new WaitCommand(900)
                         ),
+                        new InstantCommand(() -> armSubSystem.SampleCollectionModeCollectSample()),
+                        new WaitCommand((2500)),
+                        new InstantCommand(() -> armSubSystem.TransferSampleToOuttake()),
+                        new WaitCommand(1500),
+                        new FollowPath(follower, scoring2ndSample),
 
-                        new WaitCommand(200),
+                        new WaitCommand(400),
+                        new InstantCommand(() -> armSubSystem.ScoreSampleInHighBasket()),
+
+                        /** Collecting and Scoring spike 3rd Sample **/
+                        new ParallelCommandGroup(
+                                new FollowPath(follower, collect3rdSampleChain, true),
+                                new InstantCommand(() -> armSubSystem.AutonomousPositionForSampleCollection(1600, 0.265)),
+                                new WaitCommand(900)
+                        ),
+                        new InstantCommand(() -> armSubSystem.SampleCollectionModeCollectSample()),
+                        new WaitCommand((2500)),
+                        new InstantCommand(() -> armSubSystem.TransferSampleToOuttake()),
+                        new WaitCommand(1500),
+                        new FollowPath(follower, scoring2ndSample),
+
+                        new WaitCommand(400),
                         new InstantCommand(() -> armSubSystem.ScoreSampleInHighBasket())
-
-
-                        /*
-                        // After collection, transfer and score
-                        new ParallelCommandGroup(
-                                new InstantCommand(() -> armSubSystem.TransferSampleToOuttake()),
-                                new WaitCommand(2000),
-                                new FollowPath(follower, scoring1stSample),
-                                new WaitCommand(350)
-                        ),
-                        new ParallelCommandGroup(
-                                new InstantCommand(() -> armSubSystem.ScoreSampleInHighBasket()),
-                                new InstantCommand(() -> armSubSystem.AutonomousPositionForSampleCollection(1000, 0.24))
-                        ),
-
-                        /** Collecting and Scoring spike 2nd Sample
-                        new FollowPath(follower, collect2ndSample),
-                        new WaitCommand(250),
-                        new InstantCommand(() -> performVisionAlignmentAndCollection()),
-
-                        // After collection, transfer and score
-                        new ParallelCommandGroup(
-                                new InstantCommand(() -> armSubSystem.TransferSampleToOuttake()),
-                                new WaitCommand(500),
-                                new FollowPath(follower, scoring2ndSample)
-                        )
-
-                         */
                 )
         );
 

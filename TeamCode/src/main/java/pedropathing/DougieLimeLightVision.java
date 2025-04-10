@@ -24,11 +24,11 @@ public class DougieLimeLightVision extends LinearOpMode {
     DougieArmSubSystem armSubSystem;
 
     public static double IMAGE_CENTER_X = 320.0;
-    public static double ALIGNMENT_OFFSET = -20;
-    public static double MAX_STRAFE_POWER = 0.185;
-    public static double MIN_EFFECTIVE_STRAFE_POWER = 0.16;
-    public static double FINAL_ALIGNMENT_TOLERANCE = 3;
-    public static int REQUIRED_STABLE_FRAMES = 7;
+    public static double ALIGNMENT_OFFSET = -9.65;
+    public static double MAX_STRAFE_POWER = 0.26;
+    public static double MIN_EFFECTIVE_STRAFE_POWER = 0.2215;
+    public static double FINAL_ALIGNMENT_TOLERANCE = 1;
+    public static int REQUIRED_STABLE_FRAMES = 6;
 
     public static double kP = 0.0065;
     public static double kI = 0.000465;
@@ -41,10 +41,10 @@ public class DougieLimeLightVision extends LinearOpMode {
 
     public static double slideExtensionOffsetInches = 6.889764;
     public static double logCorrectionFactor = 18.05;
-    public static double horizontalSlideTicksPerInch = 58.65;
+    public static double horizontalSlideTicksPerInch = 57.55;
 
-    public static double ROTATION_OFFSET_DEGREES = 66;
-    public static int SERVO_ROTATION_DELAY_MS = 1000; // New: Delay after servo rotation before collection
+    public static double ROTATION_OFFSET_DEGREES = 64.5;
+    public static int SERVO_ROTATION_DELAY_MS = 650; // New: Delay after servo rotation before collection
 
     private PIDController alignmentPID;
     private PIDController headingLockPID;
