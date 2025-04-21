@@ -5,6 +5,7 @@ import com.acmerobotics.dashboard.config.Config;
 import com.acmerobotics.dashboard.telemetry.MultipleTelemetry;
 import com.pedropathing.util.Constants;
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
+import com.qualcomm.robotcore.eventloop.opmode.Disabled;
 import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 
 import org.firstinspires.ftc.robotcore.external.Telemetry;
@@ -19,7 +20,8 @@ import pedropathing.constants.LConstants;
 /**
  * This is the StraightBackAndForth autonomous OpMode. It runs the robot in a specified distance
  * straight forward. On reaching the end of the forward Path, the robot runs the backward Path the
- * same distance back to the start. Rinse and repeat! This is good for testing a variety of Vectors,
+ * same distance back to the start. Rinse and repeat! This is good for testi
+ * ng a variety of Vectors,
  * like the drive Vector, the translational Vector, and the heading Vector. Remember to test your
  * tunings on CurvedBackAndForth as well, since tunings that work well for straight lines might
  * have issues going in curves.
@@ -30,6 +32,7 @@ import pedropathing.constants.LConstants;
  * @version 1.0, 3/12/2024
  */
 @Config
+@Disabled
 @Autonomous (name = "Straight Back And Forth", group = "PIDF Tuning")
 public class StraightBackAndForth extends OpMode {
     private Telemetry telemetryA;
