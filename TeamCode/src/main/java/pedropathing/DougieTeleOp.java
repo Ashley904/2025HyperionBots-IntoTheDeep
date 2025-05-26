@@ -273,19 +273,16 @@ public class DougieTeleOp extends LinearOpMode {
             releaseTimer.reset();
         } else if (lastLeftBumperState) {
             if (releaseTimer.milliseconds() >= 50) {
-                armSubSystem.PositionForSpecimenSOpModeScoring();
+                armSubSystem.PositionForSpecimenScoring();
                 lastLeftBumperState = false;
             }
         }
 
-        if (gamepad1.a) armSubSystem.ScoreSpecimen();
-        if(gamepad1.x) armSubSystem.PositionToSlideSpecimensOnBar();
-
-        if(gamepad2.a) armSubSystem.ThrowSampleOutIntoObservationZone();
-
 
         /** Sample Actions **/
         boolean isCurrentlyHoldingLeftTrigger = gamepad2.left_trigger > 0.05;
+
+        if (gamepad2.a) armSubSystem.ThrowSampleOutIntoObservationZone();
 
         if (isCurrentlyHoldingLeftTrigger) {
             if (!wasHoldingLeftTrigger) {
@@ -296,7 +293,7 @@ public class DougieTeleOp extends LinearOpMode {
             double sensitivity = 30;
             armSubSystem.horizontalSlideTargetPosition += -gamepad2.left_stick_x * sensitivity;
 
-            double rotationSensitivity = 0.0105;
+            double rotationSensitivity = 0.013;
             double joystickInput = -gamepad2.right_stick_x;
 
             if (Math.abs(joystickInput) > 0.01) {

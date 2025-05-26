@@ -94,26 +94,8 @@ public class DougieArmSubSystem extends CommandBase {
                                 new InstantCommand(() -> verticalGripperServo.setTargetPosition(0.375)),
                                 new InstantCommand(() -> verticalRotationServo.setTargetPosition(0.19)),
                                 new InstantCommand(() -> verticalControlServo.setTargetPosition(0.25)),
-                                new InstantCommand(() -> verticalLeftServo.setTargetPosition(0.375)),
-                                new InstantCommand(() -> verticalRightServo.setTargetPosition(0.375))
-                        ),
-                        new InstantCommand(() -> verticalSlideTargetPosition = 0)
-                )
-        );
-    }
-
-    public void OuttakeAutoIdlePosition(){
-
-        CommandScheduler.getInstance().schedule(
-                new SequentialCommandGroup(
-                        new InstantCommand(() -> verticalControlServo.setTargetPosition(0.25)),
-
-                        new ParallelCommandGroup(
-                                new InstantCommand(() -> verticalGripperServo.setTargetPosition(1)),
-                                new InstantCommand(() -> verticalRotationServo.setTargetPosition(0.19)),
-                                new InstantCommand(() -> verticalControlServo.setTargetPosition(0.25)),
-                                new InstantCommand(() -> verticalLeftServo.setTargetPosition(0.05)),
-                                new InstantCommand(() -> verticalRightServo.setTargetPosition(0.05))
+                                new InstantCommand(() -> verticalLeftServo.setTargetPosition(0.6)),
+                                new InstantCommand(() -> verticalRightServo.setTargetPosition(0.6))
                         ),
                         new InstantCommand(() -> verticalSlideTargetPosition = 0)
                 )
@@ -127,11 +109,11 @@ public class DougieArmSubSystem extends CommandBase {
                 new SequentialCommandGroup(
                         new InstantCommand(() -> verticalSlideTargetPosition = 0),
                         new ParallelCommandGroup(
-                                new InstantCommand(() -> verticalGripperServo.setTargetPosition(0.355)),
-                                new InstantCommand(() -> verticalRotationServo.setTargetPosition(0.19)),
-                                new InstantCommand(() -> verticalControlServo.setTargetPosition(0.4)),
-                                new InstantCommand(() -> verticalLeftServo.setTargetPosition(0.01065)),
-                                new InstantCommand(() -> verticalRightServo.setTargetPosition(0.01065))
+                                new InstantCommand(() -> verticalGripperServo.setTargetPosition(0.4)),
+                                new InstantCommand(() -> verticalRotationServo.setTargetPosition(0.2)),
+                                new InstantCommand(() -> verticalControlServo.setTargetPosition(0.065)),
+                                new InstantCommand(() -> verticalLeftServo.setTargetPosition(1.0)),
+                                new InstantCommand(() -> verticalRightServo.setTargetPosition(1.0))
                         )
                 )
         );
@@ -140,55 +122,23 @@ public class DougieArmSubSystem extends CommandBase {
     public void PositionForSpecimenScoring(){
         CommandScheduler.getInstance().schedule(
                 new SequentialCommandGroup(
-                        new InstantCommand(() -> verticalGripperServo.setTargetPosition(0.625)),
+                        new InstantCommand(() -> verticalGripperServo.setTargetPosition(0.7)),
                         new WaitUntilCommand(() -> verticalGripperServo.isAtTarget(300)),
 
                         new ParallelCommandGroup(
                                 new InstantCommand(() -> verticalSlideTargetPosition = -10),
-                                new InstantCommand(() -> verticalLeftServo.setTargetPosition(0.4215)),
-                                new InstantCommand(() -> verticalRightServo.setTargetPosition(0.4215)),
+                                new InstantCommand(() -> verticalLeftServo.setTargetPosition(0.6)),
+                                new InstantCommand(() -> verticalRightServo.setTargetPosition(0.6)),
                                 new InstantCommand(() -> verticalRotationServo.setTargetPosition(0.19)),
-                                new InstantCommand(() -> verticalControlServo.setTargetPosition(0.35))
+                                new InstantCommand(() -> verticalControlServo.setTargetPosition(0.15))
                         ),
 
-                        new WaitUntilCommand(() -> verticalLeftServo.isAtTarget(100)),
-                        new WaitUntilCommand(() -> verticalRightServo.isAtTarget(100)),
+                        new WaitUntilCommand(() -> verticalLeftServo.isAtTarget(250)),
+                        new WaitUntilCommand(() -> verticalRightServo.isAtTarget(250)),
 
-                        new InstantCommand(() -> verticalGripperServo.setTargetPosition(0.55)),
+                        new InstantCommand(() -> verticalGripperServo.setTargetPosition(0.6)),
                         new WaitUntilCommand(() -> verticalGripperServo.isAtTarget(225)),
-                        new InstantCommand(() -> verticalGripperServo.setTargetPosition(0.625))
-                )
-        );
-    }
-
-    public void PositionForSpecimenSOpModeScoring(){
-        CommandScheduler.getInstance().schedule(
-                new SequentialCommandGroup(
-                        new InstantCommand(() -> verticalGripperServo.setTargetPosition(0.625)),
-                        new WaitUntilCommand(() -> verticalGripperServo.isAtTarget(100)),
-
-                        new ParallelCommandGroup(
-                                new InstantCommand(() -> verticalSlideTargetPosition = -10),
-                                new InstantCommand(() -> verticalLeftServo.setTargetPosition(0.4215)),
-                                new InstantCommand(() -> verticalRightServo.setTargetPosition(0.4215)),
-                                new InstantCommand(() -> verticalRotationServo.setTargetPosition(0.19)),
-                                new InstantCommand(() -> verticalControlServo.setTargetPosition(0.35))
-                        ),
-
-                        new WaitUntilCommand(() -> verticalLeftServo.isAtTarget(100)),
-                        new WaitUntilCommand(() -> verticalRightServo.isAtTarget(100)),
-
-                        new InstantCommand(() -> verticalGripperServo.setTargetPosition(0.55)),
-                        new WaitUntilCommand(() -> verticalGripperServo.isAtTarget(225)),
-                        new InstantCommand(() -> verticalGripperServo.setTargetPosition(0.625))
-                )
-        );
-    }
-
-    public void PositionToSlideSpecimensOnBar(){
-        CommandScheduler.getInstance().schedule(
-                new ParallelCommandGroup(
-                        new InstantCommand(() -> verticalControlServo.setTargetPosition(0.49))
+                        new InstantCommand(() -> verticalGripperServo.setTargetPosition(0.7))
                 )
         );
     }
@@ -230,8 +180,8 @@ public class DougieArmSubSystem extends CommandBase {
 
                                 new WaitCommand(500),
 
-                                new InstantCommand(() -> horizontalLeftServo.setTargetPosition(0.575)),
-                                new InstantCommand(() -> horizontalRightServo.setTargetPosition(0.575))
+                                new InstantCommand(() -> horizontalLeftServo.setTargetPosition(0.55)),
+                                new InstantCommand(() -> horizontalRightServo.setTargetPosition(0.55))
                         ),
 
                         new WaitUntilCommand(() -> horizontalLeftServo.isAtTarget(50)),
@@ -251,7 +201,7 @@ public class DougieArmSubSystem extends CommandBase {
                         new ParallelCommandGroup(
                                 new InstantCommand(() -> horizontalLeftServo.setTargetPosition(0.2175)),
                                 new InstantCommand(() -> horizontalRightServo.setTargetPosition(0.2175)),
-                                new InstantCommand(() -> horizontalControlServo.setTargetPosition(0.21)),
+                                new InstantCommand(() -> horizontalControlServo.setTargetPosition(0.235 )),
                                 new InstantCommand(() -> horizontalRotationServo.setTargetPosition(0.24))
                         )
                 )
@@ -483,7 +433,7 @@ public class DougieArmSubSystem extends CommandBase {
 
 
 
-    void VerticalPIDFSlideControl() {
+    public void VerticalPIDFSlideControl() {
         verticalSlidePIDController.setPID(verticalSlideKp, verticalSlideKi, verticalSlideKd);
 
         int currentPosition = verticalSlideRight.getCurrentPosition();

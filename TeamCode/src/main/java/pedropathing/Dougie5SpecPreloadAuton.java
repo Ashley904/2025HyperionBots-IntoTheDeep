@@ -39,7 +39,7 @@ public class Dougie5SpecPreloadAuton extends LinearOpMode {
     /**
      * Scoring the 1st specimen onto the high bar
      */
-    private final Pose scoreSpecimenPreload = new Pose(41.53, 75, Math.toRadians(0));
+    private final Pose scoreSpecimenPreload = new Pose(42.15, 75, Math.toRadians(0));
 
     /**
      * Pushing the 1st sample into the observation zone
@@ -61,7 +61,7 @@ public class Dougie5SpecPreloadAuton extends LinearOpMode {
     private final Pose push3rdSampleIntoObservationZone1 = new Pose(50, 17.5, Math.toRadians(0));
     private final Pose push3rdSampleIntoObservationZone2 = new Pose(60, 10.7, Math.toRadians(0));
     private final Pose push3rdSampleIntoObservationZone3 = new Pose(17, 10.7, Math.toRadians(0));
-    private final Pose reverseToCollectSample = new Pose(15, 12.15, Math.toRadians(0));
+    private final Pose reverseToCollectSample = new Pose(12.5, 12.15, Math.toRadians(0));
 
     /**
      * Hanging the 2nd specimen onto the high bar
@@ -306,16 +306,12 @@ public class Dougie5SpecPreloadAuton extends LinearOpMode {
     }
 
     public void runOpMode(){
-        gripperServo = hardwareMap.get(Servo.class, "verticalGripperServo");
-        gripperServo.setDirection(Servo.Direction.FORWARD);
 
         armSubSystem = new DougieArmSubSystem(hardwareMap);
 
         Constants.setConstants(FConstants.class, LConstants.class);
         follower = new Follower(hardwareMap, FConstants.class, LConstants.class);
         follower.setStartingPose(startPose);
-
-        gripperServo.setPosition(0.625);
         buildPaths();
 
         // Building Autonomous Route
@@ -324,7 +320,7 @@ public class Dougie5SpecPreloadAuton extends LinearOpMode {
 
                         /** Scoring 1st Specimen Preload **/
                         new InstantCommand(() -> armSubSystem.PositionForSpecimenScoring()),
-                        new WaitCommand(600),
+                        new WaitCommand(1500),
                         new FollowPath(follower, scorePreloadPathChain, true),
                         new WaitCommand(395),
                         new InstantCommand(() -> armSubSystem.ScoreSpecimen()),
@@ -349,10 +345,12 @@ public class Dougie5SpecPreloadAuton extends LinearOpMode {
                         new WaitCommand(350),
 
                         new InstantCommand(() -> armSubSystem.ScoreSpecimen()),
-                        new WaitCommand(450),
+                        new WaitCommand(450)
+
+                        /*
 
 
-                        /** Collecting + Hanging 3rd Specimen **/
+                        /** Collecting + Hanging 3rd Specimen
 
                         new ParallelCommandGroup(
                                 new InstantCommand(() -> armSubSystem.PositionForSpecimenCollection()),
@@ -364,11 +362,11 @@ public class Dougie5SpecPreloadAuton extends LinearOpMode {
 
                         new FollowPath(follower, chainedHang3rdSpecimen, true),
                         new InstantCommand(() -> armSubSystem.ScoreSpecimen()),
-                        new WaitCommand(465),
+                        new WaitCommand(465)
 
 
 
-                        /** Collecting + Hanging 4th Specimen **/
+                        /** Collecting + Hanging 4th Specimen
 
                         new ParallelCommandGroup(
                                 new InstantCommand(() -> armSubSystem.PositionForSpecimenCollection()),
@@ -386,22 +384,22 @@ public class Dougie5SpecPreloadAuton extends LinearOpMode {
 
                         /** Collecting + Hanging 5th Specimen
 
-                        new ParallelCommandGroup(
-                                new InstantCommand(() -> armSubSystem.PositionForSpecimenCollection()),
-                                new FollowPath(follower, collect5thSpecimen)
-                        ),
-                        new InstantCommand(() -> armSubSystem.PositionForSpecimenScoring()),
-                        new WaitCommand(430),
+                         new ParallelCommandGroup(
+                         new InstantCommand(() -> armSubSystem.PositionForSpecimenCollection()),
+                         new FollowPath(follower, collect5thSpecimen)
+                         ),
+                         new InstantCommand(() -> armSubSystem.PositionForSpecimenScoring()),
+                         new WaitCommand(430),
 
-                        new FollowPath(follower, chainedHang5thSpecimen, true),
-                        new InstantCommand(() -> armSubSystem.ScoreSpecimen()),
-                        new WaitCommand(465),
+                         new FollowPath(follower, chainedHang5thSpecimen, true),
+                         new InstantCommand(() -> armSubSystem.ScoreSpecimen()),
+                         new WaitCommand(465),
 
-                        new ParallelCommandGroup(
-                                new FollowPath(follower, park),
-                                new InstantCommand(() -> armSubSystem.PositionForSpecimenCollection())
-                        )
-                        */
+                         new ParallelCommandGroup(
+                         new FollowPath(follower, park),
+                         new InstantCommand(() -> armSubSystem.PositionForSpecimenCollection())
+                         )
+                         */
                 )
         );
 
