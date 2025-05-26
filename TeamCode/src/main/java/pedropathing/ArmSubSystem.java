@@ -1,4 +1,3 @@
-// File: DougieArmSubSystem.java
 package pedropathing;
 
 import com.arcrobotics.ftclib.command.*;
@@ -7,9 +6,7 @@ import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.HardwareMap;
 import com.qualcomm.robotcore.hardware.Servo;
 
-import org.firstinspires.ftc.onbotjava.handlers.objbuild.WaitForBuild;
-
-public class DougieArmSubSystem extends CommandBase {
+public class ArmSubSystem extends CommandBase {
 
     private static final double verticalSlideKp = 0.0265;
     private static final double verticalSlideKi = 0.0;
@@ -50,7 +47,10 @@ public class DougieArmSubSystem extends CommandBase {
     MotionProfiledServo horizontalRotationServo;
     MotionProfiledServo horizontalGripperServo;
 
-    public DougieArmSubSystem(HardwareMap hardwareMap){
+    public boolean hangingCompleted = false;
+    public boolean specimenCollected = false;
+
+    public ArmSubSystem(HardwareMap hardwareMap){
         verticalSlidePIDController = new PIDController(verticalSlideKp, verticalSlideKi, verticalSlideKd);
         horizontalSlidePIDController = new PIDController(horizontalSlideKp, horizontalSlideKi, horizontalSlideKd);
 
@@ -107,7 +107,7 @@ public class DougieArmSubSystem extends CommandBase {
     public void PositionForSpecimenCollection(){
         CommandScheduler.getInstance().schedule(
                 new SequentialCommandGroup(
-                        new InstantCommand(() -> verticalSlideTargetPosition = 0),
+                        new InstantCommand(() -> verticalSlideTargetPosition = -10),
                         new ParallelCommandGroup(
                                 new InstantCommand(() -> verticalGripperServo.setTargetPosition(0.4)),
                                 new InstantCommand(() -> verticalRotationServo.setTargetPosition(0.2)),
@@ -122,45 +122,40 @@ public class DougieArmSubSystem extends CommandBase {
     public void PositionForSpecimenScoring(){
         CommandScheduler.getInstance().schedule(
                 new SequentialCommandGroup(
-                        new InstantCommand(() -> verticalGripperServo.setTargetPosition(0.7)),
+
+                        new InstantCommand(() -> verticalGripperServo.setTargetPosition(0.7)).alongWith(
+                                new InstantCommand(() -> specimenCollected = false)
+                        ),
                         new WaitUntilCommand(() -> verticalGripperServo.isAtTarget(300)),
 
+                        new InstantCommand(() -> specimenCollected = true),
+
                         new ParallelCommandGroup(
-                                new InstantCommand(() -> verticalSlideTargetPosition = -10),
-                                new InstantCommand(() -> verticalLeftServo.setTargetPosition(0.6)),
+                                new InstantCommand(() -> verticalSlideTargetPosition = 0),
+                                new InstantCommand(() -> verticalLeftServo.setTargetPosition(0.62)),
                                 new InstantCommand(() -> verticalRightServo.setTargetPosition(0.6)),
                                 new InstantCommand(() -> verticalRotationServo.setTargetPosition(0.19)),
-                                new InstantCommand(() -> verticalControlServo.setTargetPosition(0.15))
-                        ),
+                                new InstantCommand(() -> verticalControlServo.setTargetPosition(0.225)),
 
-                        new WaitUntilCommand(() -> verticalLeftServo.isAtTarget(250)),
-                        new WaitUntilCommand(() -> verticalRightServo.isAtTarget(250)),
-
-                        new InstantCommand(() -> verticalGripperServo.setTargetPosition(0.6)),
-                        new WaitUntilCommand(() -> verticalGripperServo.isAtTarget(225)),
-                        new InstantCommand(() -> verticalGripperServo.setTargetPosition(0.7))
+                                new InstantCommand(() -> verticalSlideTargetPosition = 135)
+                        )
                 )
         );
     }
 
     public void ScoreSpecimen(){
         CommandScheduler.getInstance().schedule(
-                new SequentialCommandGroup(
 
-                        new InstantCommand(() -> verticalSlideTargetPosition = 630),
+                new SequentialCommandGroup(
+                        new InstantCommand(() -> verticalSlideTargetPosition = 1000).alongWith(
+                                new InstantCommand(() -> hangingCompleted = false)
+                        ),
                         new WaitUntilCommand(() -> isVerticalSlideAtTarget),
-                        new WaitCommand(250),
-                        new InstantCommand(() -> verticalGripperServo.setTargetPosition(0.3)),
+                        new WaitCommand(150),
+                        new InstantCommand(() -> verticalGripperServo.setTargetPosition(0.3)).alongWith(
+                                new InstantCommand(() -> hangingCompleted = true)
+                        ),
                         new InstantCommand(() -> verticalSlideTargetPosition = 0)
-                )
-        );
-    }
-
-    public void PositionForSampleScanning(){
-        CommandScheduler.getInstance().schedule(
-                new SequentialCommandGroup(
-                        new InstantCommand(() -> verticalSlideTargetPosition = 1050),
-                        new InstantCommand(this:: LimeLightIntakeIdlePosition)
                 )
         );
     }
@@ -208,55 +203,7 @@ public class DougieArmSubSystem extends CommandBase {
         );
     }
 
-
-    public void SampleCollectionModeCollectSample(){
-        CommandScheduler.getInstance().schedule(
-
-                new SequentialCommandGroup(
-                        new ParallelCommandGroup(
-                                new InstantCommand(() -> horizontalLeftServo.setTargetPosition(0.168)),
-                                new InstantCommand(() -> horizontalRightServo.setTargetPosition(0.168)),
-                                new InstantCommand(() -> horizontalControlServo.setTargetPosition(0.23))
-                        ),
-
-                        new WaitCommand(150),
-
-                        new InstantCommand(() -> horizontalGripperServo.setTargetPosition(0.705)),
-                        new WaitUntilCommand(() -> horizontalGripperServo.isAtTarget(400)),
-
-                        new ParallelCommandGroup(
-                                new InstantCommand(() -> horizontalLeftServo.setTargetPosition(0.55)),
-                                new InstantCommand(() -> horizontalRightServo.setTargetPosition(0.55)),
-                                new InstantCommand(() -> horizontalControlServo.setTargetPosition(0.23)),
-                                new InstantCommand(() -> horizontalRotationServo.setTargetPosition(0.24)),
-
-                                new WaitCommand(100),
-
-                                new ParallelCommandGroup(
-                                        new InstantCommand(() -> horizontalSlideTargetPosition = -65),
-                                        new InstantCommand(() -> verticalSlideTargetPosition = 300),
-                                        new WaitCommand(335),
-
-                                        new InstantCommand(() -> verticalGripperServo.setTargetPosition(0.35)),
-                                        new InstantCommand(() -> verticalRotationServo.setTargetPosition(0.19)),
-                                        new InstantCommand(() -> verticalControlServo.setTargetPosition(0.285)),
-
-                                        new WaitCommand(650),
-
-                                        new InstantCommand(() -> verticalLeftServo.setTargetPosition(0.5)),
-                                        new InstantCommand(() -> verticalRightServo.setTargetPosition(0.5))
-                                )
-                        ),
-                        new WaitCommand(100),
-                        new InstantCommand(() -> horizontalGripperServo.setTargetPosition(0.8)),
-                        new WaitUntilCommand(() -> horizontalGripperServo.isAtTarget(320)),
-
-                        new InstantCommand(() -> horizontalGripperServo.setTargetPosition(0.7))
-                )
-        );
-    }
-
-    public void SpecimenCollectionModeCollectSample(){
+    public void CollectSample(){
         CommandScheduler.getInstance().schedule(
 
                 new SequentialCommandGroup(
@@ -304,134 +251,6 @@ public class DougieArmSubSystem extends CommandBase {
         );
     }
 
-    public void TransferSampleToOuttake() {
-        CommandScheduler.getInstance().schedule(
-
-                new SequentialCommandGroup(
-                        new ParallelCommandGroup(
-                                // Intake Actions
-                                new SequentialCommandGroup(
-                                        new ParallelCommandGroup(
-                                                new InstantCommand(() -> horizontalSlideTargetPosition = 135),
-                                                new InstantCommand(() -> horizontalRotationServo.setTargetPosition(0.23)),
-                                                new InstantCommand(() -> horizontalLeftServo.setTargetPosition(0.6)),
-                                                new InstantCommand(() -> horizontalRightServo.setTargetPosition(0.6)),
-                                                new InstantCommand(() -> horizontalControlServo.setTargetPosition(0.4)),
-                                                new InstantCommand(() -> horizontalGripperServo.setTargetPosition(0.6))
-                                        ),
-                                        new WaitUntilCommand(() -> horizontalLeftServo.isAtTarget()),
-                                        new WaitUntilCommand(() -> horizontalRightServo.isAtTarget())
-                                ),
-
-                                // Outtake Actions
-                                new SequentialCommandGroup(
-                                        new InstantCommand(() -> verticalSlideTargetPosition = 400),
-                                        new WaitUntilCommand(() -> isVerticalSlideAtTarget),
-
-                                        new ParallelCommandGroup(
-                                                new InstantCommand(() -> verticalGripperServo.setTargetPosition(0.35)),
-                                                new InstantCommand(() -> verticalRotationServo.setTargetPosition(0.19)),
-                                                new InstantCommand(() -> verticalControlServo.setTargetPosition(0.285)),
-
-                                                new WaitCommand(200),
-
-                                                new InstantCommand(() -> verticalLeftServo.setTargetPosition(0.65)),
-                                                new InstantCommand(() -> verticalRightServo.setTargetPosition(0.65))
-                                        )
-                                )
-                        ),
-                        new ParallelCommandGroup(
-
-                                new InstantCommand(() -> verticalGripperServo.setTargetPosition(0.665)),
-                                new WaitCommand(100),
-                                new InstantCommand(() -> horizontalGripperServo.setTargetPosition(1))
-                        ),
-
-                        new WaitUntilCommand(() -> verticalGripperServo.isAtTarget(165)),
-
-                        new ParallelCommandGroup(
-
-                                new InstantCommand(this::PositionForHighBucketScoring),
-                                new InstantCommand(this::IntakeOpModeIdlePosition)
-                        )
-                )
-        );
-    }
-
-
-
-    void PositionForHighBucketScoring(){
-
-        CommandScheduler.getInstance().schedule(
-                new InstantCommand(() -> verticalGripperServo.setTargetPosition(0.65)),
-
-                new ParallelCommandGroup(
-
-                        new InstantCommand(() -> verticalSlideTargetPosition = 1900),
-                        new InstantCommand(() -> verticalControlServo.setTargetPosition(0.88)),
-
-                        new InstantCommand(() -> verticalLeftServo.setTargetPosition(0.285)),
-                        new InstantCommand(() -> verticalRightServo.setTargetPosition(0.285)),
-
-                        new InstantCommand(() -> verticalRotationServo.setTargetPosition(0.19))
-                )
-        );
-    }
-
-    void ScoreSampleInHighBasket(){
-
-        CommandScheduler.getInstance().schedule(
-                new SequentialCommandGroup(
-                        new InstantCommand(() -> verticalGripperServo.setTargetPosition(0.25)),
-                        new WaitUntilCommand(() -> verticalGripperServo.isAtTarget()),
-
-                        new InstantCommand(() -> verticalControlServo.setTargetPosition(0.5)),
-                        new WaitUntilCommand(() -> verticalControlServo.isAtTarget()),
-
-                        new InstantCommand(() -> verticalSlideTargetPosition = 0),
-                        new InstantCommand(this:: OuttakeOpModeIdlePosition)
-                )
-        );
-    }
-
-    /** Autonomous Sample Pick Up Actions **/
-    public void AutonomousPositionForSampleCollection(int slideTargetPosition, double rotationServoTargetPosition){
-
-        CommandScheduler.getInstance().schedule(
-                new SequentialCommandGroup(
-                        new InstantCommand(() -> horizontalSlideTargetPosition = slideTargetPosition),
-
-                        new ParallelCommandGroup(
-                                new InstantCommand(() -> horizontalLeftServo.setTargetPosition(0.2175)),
-                                new InstantCommand(() -> horizontalRightServo.setTargetPosition(0.2175)),
-                                new InstantCommand(() -> horizontalControlServo.setTargetPosition(0.21)),
-                                new InstantCommand(() -> horizontalGripperServo.setTargetPosition(1)),
-                                new InstantCommand(() -> horizontalRotationServo.setTargetPosition(rotationServoTargetPosition))
-                        )
-                )
-        );
-    }
-
-
-
-    /** Limelight Sample Pick Up Actions **/
-    public void LimeLightIntakeIdlePosition() {
-        CommandScheduler.getInstance().schedule(
-                new SequentialCommandGroup(
-                        new ParallelCommandGroup(
-                                new InstantCommand(() -> horizontalLeftServo.setTargetPosition(0.55)),
-                                new InstantCommand(() -> horizontalRightServo.setTargetPosition(0.55)),
-                                new InstantCommand(() -> horizontalControlServo.setTargetPosition(0.2))
-                        ),
-
-                        new WaitCommand(150),
-
-                        new InstantCommand(() -> horizontalGripperServo.setTargetPosition(0.74))
-                )
-        );
-    }
-
-
 
     public void VerticalPIDFSlideControl() {
         verticalSlidePIDController.setPID(verticalSlideKp, verticalSlideKi, verticalSlideKd);
@@ -472,6 +291,7 @@ public class DougieArmSubSystem extends CommandBase {
 
         isHorizontalSlideAtTarget = Math.abs(currentHorizontalSlidePosition - horizontalSlideTargetPosition) < 50;
     }
+
     public void updateServos() {
         verticalGripperServo.update();
         verticalLeftServo.update();

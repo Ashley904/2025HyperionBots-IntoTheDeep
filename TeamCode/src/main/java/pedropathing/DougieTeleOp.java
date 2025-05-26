@@ -3,10 +3,6 @@ package pedropathing;
 import com.acmerobotics.dashboard.config.Config;
 import com.arcrobotics.ftclib.command.CommandScheduler;
 import com.arcrobotics.ftclib.controller.PIDController;
-import com.pedropathing.pathgen.BezierLine;
-import com.pedropathing.pathgen.Path;
-import com.pedropathing.pathgen.PathBuilder;
-import com.pedropathing.pathgen.Point;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.hardware.DcMotor;
@@ -15,20 +11,16 @@ import com.qualcomm.robotcore.hardware.IMU;
 import com.qualcomm.robotcore.util.ElapsedTime;
 
 import com.pedropathing.follower.Follower;
-import com.pedropathing.localization.Pose;
 import com.pedropathing.util.Constants;
 
 import pedropathing.constants.FConstants;
 import pedropathing.constants.LConstants;
 
-
-import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
-
 @Config
 @TeleOp(name = "Official TeleOp")
 public class DougieTeleOp extends LinearOpMode {
 
-    DougieArmSubSystem armSubSystem;
+    ArmSubSystem armSubSystem;
 
     DcMotor front_left_motor;
     DcMotor front_right_motor;
@@ -60,19 +52,15 @@ public class DougieTeleOp extends LinearOpMode {
     /**  Booleans ***/
     private boolean lastDpadUpState;
     private boolean lastDpadDownState;
-    private boolean lastGamepad2DpadUpState;
-    private boolean lastGamepad2DpadDownState;
     private boolean lockHeading = true;
     private boolean lastLeftBumperState = false;
     private boolean wasHoldingLeftTrigger = false;
-    private boolean wasScoringWithLeftTrigger = false;
 
     ElapsedTime releaseTimer;
 
 
-    /** Drive Mode + Game Mode Selection **/
+    /** Drive Mode**/
     private String currentDriveMode = "Robot Centric";
-    private String currentSampleCollectionMode = "Specimen Mode";
 
     Follower follower;
 
@@ -80,7 +68,7 @@ public class DougieTeleOp extends LinearOpMode {
         Constants.setConstants(FConstants.class, LConstants.class);
         follower = new Follower(hardwareMap, FConstants.class, LConstants.class);
 
-        armSubSystem = new DougieArmSubSystem(hardwareMap);
+        armSubSystem = new ArmSubSystem(hardwareMap);
 
         imu = hardwareMap.get(IMU.class, "imu");
         FieldCentricPIDController = new PIDController(headingKp,headingKi,headingKd);
@@ -118,7 +106,6 @@ public class DougieTeleOp extends LinearOpMode {
 
         while(opModeIsActive()){
             DriveModeToggling();
-            SampleModeToggling();
             ArmPositionToggling();
             BackgroundOpModeTasks();
 
@@ -266,7 +253,7 @@ public class DougieTeleOp extends LinearOpMode {
         if(gamepad1.left_stick_button) armSubSystem.OuttakeOpModeIdlePosition();
         if(gamepad2.left_stick_button) armSubSystem.IntakeOpModeIdlePosition();
 
-        /** Specimen Actions **/
+        // Specimen Actions
         if (gamepad1.left_bumper) {
             armSubSystem.PositionForSpecimenCollection();
             lastLeftBumperState = true;
@@ -278,8 +265,10 @@ public class DougieTeleOp extends LinearOpMode {
             }
         }
 
+        if(gamepad1.x) armSubSystem.ScoreSpecimen();
 
-        /** Sample Actions **/
+
+        // Sample Actions
         boolean isCurrentlyHoldingLeftTrigger = gamepad2.left_trigger > 0.05;
 
         if (gamepad2.a) armSubSystem.ThrowSampleOutIntoObservationZone();
@@ -303,54 +292,6 @@ public class DougieTeleOp extends LinearOpMode {
                 armSubSystem.horizontalRotationServo.setTargetPosition(newRotation);
             }
 
-        } else if (wasHoldingLeftTrigger) {
-
-            if(currentSampleCollectionMode.equals("Sample Mode")){
-                armSubSystem.SampleCollectionModeCollectSample();
-                wasHoldingLeftTrigger = false;
-            }
-            else if(currentSampleCollectionMode.equals("Specimen Mode")) {
-                armSubSystem.SpecimenCollectionModeCollectSample();
-                wasHoldingLeftTrigger = false;
-            }
-
-        }
-
-        // Transfer to outtake
-        if (gamepad1.b) armSubSystem.TransferSampleToOuttake();
-
-        if (gamepad1.left_trigger > 0.05 && !wasScoringWithLeftTrigger) {
-            armSubSystem.ScoreSampleInHighBasket();
-            wasScoringWithLeftTrigger = true;
-        } else if (gamepad1.left_trigger <= 0.05) {
-            wasScoringWithLeftTrigger = false;
-        }
+        } else if (wasHoldingLeftTrigger) armSubSystem.CollectSample();
     }
-    private void SampleModeToggling(){
-
-        // Toggling sample mode
-        if (gamepad2.dpad_up && !lastGamepad2DpadUpState && !currentDriveMode.equals("Sample Mode")) {
-            lastGamepad2DpadUpState = true;
-            currentSampleCollectionMode = "Sample Mode";
-            Gamepad.RumbleEffect sampleModeRumbleUpdate = new Gamepad.RumbleEffect.Builder()
-                    .addStep(1.0, 1.0, 200)
-                    .build();
-            gamepad2.runRumbleEffect(sampleModeRumbleUpdate);
-        } else if (!gamepad2.dpad_up) lastGamepad2DpadUpState = false;
-
-
-        // Toggling specimen mode
-        if (gamepad2.dpad_down && !lastGamepad2DpadDownState && !currentDriveMode.equals("Specimen Mode")) {
-            lastGamepad2DpadDownState = true;
-            currentSampleCollectionMode = "Specimen Mode";
-            Gamepad.RumbleEffect sampleModeRumbleUpdate = new Gamepad.RumbleEffect.Builder()
-                    .addStep(1.0, 1.0, 200)
-                    .build();
-            gamepad2.runRumbleEffect(sampleModeRumbleUpdate);
-
-        } else if (!gamepad2.dpad_down) lastGamepad2DpadDownState = false;
-
-    }
-
-
 }

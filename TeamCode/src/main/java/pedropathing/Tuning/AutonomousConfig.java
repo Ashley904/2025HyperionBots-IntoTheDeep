@@ -11,14 +11,16 @@ import com.pedropathing.pathgen.Point;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 
-import pedropathing.DougieArmSubSystem;
+import pedropathing.ArmSubSystem;
+import pedropathing.constants.FConstants;
+import pedropathing.constants.LConstants;
 
 @Config
 @TeleOp(group = "Tuners", name ="Autonomous Config OpMode")
 public class AutonomousConfig extends LinearOpMode {
 
     Follower follower;
-    DougieArmSubSystem armSubSystem;
+    ArmSubSystem armSubSystem;
 
 
     public static double pointX;
@@ -47,8 +49,9 @@ public class AutonomousConfig extends LinearOpMode {
 
     public void runOpMode(){
 
+        follower = new Follower(hardwareMap, FConstants.class, LConstants.class);
         follower.setStartingPose(startingPose);
-        armSubSystem = new DougieArmSubSystem(hardwareMap);
+        armSubSystem = new ArmSubSystem(hardwareMap);
 
         telemetry.addData("Status: ", "Ready To Start...");
         telemetry.update();
@@ -63,6 +66,8 @@ public class AutonomousConfig extends LinearOpMode {
                 desiredBezierLinePath = new Path(new BezierLine(new Point(follower.getPose()), new Point(desiredPose)));
                 desiredBezierLinePath.setConstantHeadingInterpolation(Math.toRadians(0));
 
+                follower.followPath(desiredBezierLinePath);
+
             }else if (bezierCurve){
 
                 Point bezierControlPoint = new Point(controlPointX, controlPointY);
@@ -70,6 +75,8 @@ public class AutonomousConfig extends LinearOpMode {
 
                 desiredBezierCurvePath = new Path(new BezierCurve(new Point(follower.getPose()), bezierControlPoint, new Point(desiredPose)));
                 desiredBezierCurvePath.setConstantHeadingInterpolation(Math.toRadians(0));
+
+                follower.followPath(desiredBezierCurvePath);
 
             }
 
@@ -81,12 +88,13 @@ public class AutonomousConfig extends LinearOpMode {
                 case 3: armSubSystem.ScoreSpecimen(); break;
             }
 
+            if(followPath) follower.update();
+
             armSubSystem.updateServos();
             armSubSystem.HorizontalPIDFSlideControl();
             armSubSystem.VerticalPIDFSlideControl();
 
             CommandScheduler.getInstance().run();
-            if(followPath) follower.update();
         }
     }
 
